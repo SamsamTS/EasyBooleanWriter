@@ -85,7 +85,7 @@ label {
   color: var(--muted);
   margin-bottom: 6px;
 }
-.row { display: flex; gap: 8px; }
+.row { display: flex; align-items: flex-start; gap: 8px; }
 #expr {
   flex: 1 1 auto;
   min-width: 0;
@@ -97,6 +97,10 @@ label {
   border: 1px solid var(--border);
   border-radius: 8px;
   outline: none;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.4;
+  display: block;
 }
 #expr:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 button {
@@ -109,7 +113,7 @@ button {
 }
 button:hover { background: var(--btn-hover); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-#clearBtn { padding: 0 16px; }
+#clearBtn { padding: 0 16px; height: calc(1.1rem * 1.4 + 22px); flex: 0 0 auto; }
 .icon-btn {
   display: inline-flex;
   align-items: center;
@@ -147,7 +151,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .row { gap: 6px; }
   #expr { font-size: 16px; padding: 10px; }
   #expr::placeholder { font-size: 0.85em; }
-  #clearBtn { padding: 0 12px; }
+  #clearBtn { padding: 0 12px; height: calc(16px * 1.4 + 22px); }
   #result { font-size: 1.5rem; }
   .icon-btn { width: 40px; height: 40px; }
   .theme-toggle { top: 10px; right: 10px; }
@@ -161,6 +165,9 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   border-radius: 2px;
 }
 .err.ghost { color: var(--err); opacity: 0.7; }
+#result .rblock { width: fit-content; max-width: 100%; margin: 0 auto; text-align: left; }
+#result .rblock > div { line-height: 1.45; }
+#result .blank { height: 0.6em; line-height: 0; }
 #note {
   position: absolute;
   left: 12px;
@@ -185,7 +192,7 @@ sub { font-size: 0.65em; line-height: 0; }
   <div id="inputPanel" class="panel">
     <label for="expr">Expression</label>
     <div class="row">
-      <input id="expr" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="S = (/(/AB) + C0 ^ D_ef).F" />
+      <textarea id="expr" rows="1" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="S = (/(/AB) + C0 ^ D_ef).F"></textarea>
       <button id="clearBtn" type="button">Clear</button>
     </div>
   </div>
@@ -219,6 +226,7 @@ sub { font-size: 0.65em; line-height: 0; }
       clear: 'Clear',
       placeholder: 'S = (/(/AB) + C0 ^ D_ef).F',
       themeTip: 'Toggle light / dark theme',
+      lineWord: 'Line',
       langTip: 'Passer en fran\u00E7ais',
       err: {
         missing: function () { return 'Missing operand'; },
@@ -233,6 +241,7 @@ sub { font-size: 0.65em; line-height: 0; }
       clear: 'Effacer',
       placeholder: 'S = (/(/AB) + C0 ^ D_ef).F',
       themeTip: 'Basculer entre th\u00E8me clair et sombre',
+      lineWord: 'Ligne',
       langTip: 'Switch to English',
       err: {
         missing: function () { return 'Op\u00E9rande manquant'; },
@@ -510,12 +519,14 @@ sub { font-size: 0.65em; line-height: 0; }
 
     var lang = 'en';
     var lastErrors = [];
+    var lineCount = 1;
     var KEY_LANG = 'boolnotation.lang';
 
     function showNote() {
       if (!lastErrors.length) { note.textContent = ''; return; }
       var e = lastErrors[0];
-      note.textContent = '\u26A0 ' + I18N[lang].err[e.key](e.c);
+      var pre = lineCount > 1 ? I18N[lang].lineWord + ' ' + e.line + (lang === 'fr' ? '\u00A0: ' : ': ') : '';
+      note.textContent = '\u26A0 ' + pre + I18N[lang].err[e.key](e.c);
     }
     function applyLang() {
       var d = I18N[lang];
@@ -546,19 +557,31 @@ sub { font-size: 0.65em; line-height: 0; }
       applyLang();
     });
 
+    function autosize() {
+      input.style.height = 'auto';
+      var cs = window.getComputedStyle(input);
+      var extra = (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
+      input.style.height = (input.scrollHeight + extra) + 'px';
+    }
     function render() {
       var v = input.value;
-      if (!v.replace(/\s+/g, '')) {
-        currentSegs = [];
-        result.innerHTML = '';
-        lastErrors = [];
-        showNote();
-        return;
+      autosize();
+      var lines = v.split(/\r\n|\r|\n/), html = '', i, r, errs = [], any = false;
+      lineCount = lines.length;
+      for (i = 0; i < lines.length; i++) {
+        if (!lines[i].replace(/\s+/g, '')) {
+          html += '<div class="blank"></div>';
+          continue;
+        }
+        any = true;
+        r = buildSegs(lines[i]);
+        html += '<div>' + segsToHTML(r.segs) + '</div>';
+        if (r.errors.length && !errs.length) {
+          errs = [{ key: r.errors[0].key, c: r.errors[0].c, line: i + 1 }];
+        }
       }
-      var r = buildSegs(v);
-      currentSegs = r.segs;
-      result.innerHTML = '<div>' + segsToHTML(r.segs) + '</div>';
-      lastErrors = r.errors;
+      result.innerHTML = any ? '<div class="rblock">' + html + '</div>' : '';
+      lastErrors = errs;
       showNote();
     }
 
@@ -577,6 +600,7 @@ sub { font-size: 0.65em; line-height: 0; }
     });
 
     /* input */
+    window.addEventListener('resize', autosize);
     input.addEventListener('input', function () {
       store.set(KEY_INPUT, input.value);
       render();
