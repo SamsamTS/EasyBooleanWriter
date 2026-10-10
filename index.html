@@ -63,9 +63,13 @@ main {
   padding: 64px 16px 40px 16px;
 }
 h1 {
-  font-size: 1.15rem;
+  font-family: "Times New Roman", Times, "Liberation Serif", serif;
+  font-variant: small-caps;
+  font-size: 1.7rem;
   font-weight: 600;
-  margin: 0 0 16px 0;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  margin: 0 0 18px 0;
 }
 .panel {
   position: relative;
@@ -106,20 +110,6 @@ button {
 button:hover { background: var(--btn-hover); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 #clearBtn { padding: 0 16px; }
-.hint {
-  margin: 10px 0 0 0;
-  font-size: 0.78rem;
-  color: var(--muted);
-  line-height: 1.5;
-}
-.hint code { font-family: ui-monospace, Menlo, Consolas, monospace; }
-.hint .ex-arrow { margin: 0 0.4em; }
-.hint .ex-result {
-  font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", "STIXGeneral", Cambria, "Times New Roman", serif;
-  font-size: 1.15em;
-  line-height: 2;
-  color: inherit;
-}
 .icon-btn {
   display: inline-flex;
   align-items: center;
@@ -131,7 +121,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .theme-toggle { position: fixed; top: 12px; right: 12px; z-index: 10; }
 .lang-toggle { right: 56px; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em; }
-#outputPanel { min-height: 120px; }
+#outputPanel { min-height: 120px; padding: 24px 16px; display: flex; flex-direction: column; }
 #result {
   font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", "STIXGeneral", Cambria, "Times New Roman", serif;
   font-size: 2rem;
@@ -148,6 +138,21 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   margin: 0 0.07em;
   line-height: 1.1;
 }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+#result { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; overflow-x: auto; overflow-y: hidden; }
+@media (max-width: 520px) {
+  main { padding: 60px 12px 24px 12px; }
+  .panel { padding: 12px; }
+  #outputPanel { padding: 24px 12px; }
+  .row { gap: 6px; }
+  #expr { font-size: 16px; padding: 10px; }
+  #expr::placeholder { font-size: 0.85em; }
+  #clearBtn { padding: 0 12px; }
+  #result { font-size: 1.5rem; }
+  .icon-btn { width: 40px; height: 40px; }
+  .theme-toggle { top: 10px; right: 10px; }
+  .lang-toggle { right: 56px; }
+}
 .ov > .ov:first-child { margin-left: 0; }
 .ov > .ov:last-child { margin-right: 0; }
 .err {
@@ -157,11 +162,15 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 }
 .err.ghost { color: var(--err); opacity: 0.7; }
 #note {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 6px;
   text-align: center;
-  min-height: 1.2em;
-  margin-top: 6px;
   font-size: 0.78rem;
+  line-height: 1.2;
   color: var(--muted);
+  pointer-events: none;
 }
 sub { font-size: 0.65em; line-height: 0; }
 </style>
@@ -176,10 +185,9 @@ sub { font-size: 0.65em; line-height: 0; }
   <div id="inputPanel" class="panel">
     <label for="expr">Expression</label>
     <div class="row">
-      <input id="expr" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="e.g. /(/A + B) . C + /D" />
+      <input id="expr" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="S = (/(/AB) + C0 ^ D_ef).F" />
       <button id="clearBtn" type="button">Clear</button>
     </div>
-    <p class="hint" id="hint"></p>
   </div>
   <div id="outputPanel" class="panel">
     <div id="result" aria-live="polite"></div>
@@ -209,8 +217,7 @@ sub { font-size: 0.65em; line-height: 0; }
       pageTitle: 'Easy Boolean Writer',
       label: 'Expression',
       clear: 'Clear',
-      placeholder: 'e.g. /(/A + B) . C + /D',
-      exLabel: 'Example:',
+      placeholder: 'S = (/(/AB) + C0 ^ D_ef).F',
       themeTip: 'Toggle light / dark theme',
       langTip: 'Passer en fran\u00E7ais',
       err: {
@@ -224,8 +231,7 @@ sub { font-size: 0.65em; line-height: 0; }
       pageTitle: '\u00C9criture Bool\u00E9enne Facile',
       label: 'Expression',
       clear: 'Effacer',
-      placeholder: 'ex. /(/A + B) . C + /D',
-      exLabel: 'Exemple\u00A0:',
+      placeholder: 'S = (/(/AB) + C0 ^ D_ef).F',
       themeTip: 'Basculer entre th\u00E8me clair et sombre',
       langTip: 'Switch to English',
       err: {
@@ -519,8 +525,6 @@ sub { font-size: 0.65em; line-height: 0; }
       document.querySelector('label[for="expr"]').textContent = d.label;
       document.getElementById('clearBtn').textContent = d.clear;
       input.setAttribute('placeholder', d.placeholder);
-      var exSrc = 'S = /(/A_0 + B12) . C ^ !D + (E_mn + 1) /F';
-      document.getElementById('hint').innerHTML = esc(d.exLabel) + ' <code>' + esc(exSrc) + '</code> <span class="ex-arrow">\u2192</span> <span class="ex-result">' + segsToHTML(buildSegs(exSrc).segs) + '</span>';
       var tt = document.getElementById('themeToggle');
       tt.setAttribute('title', d.themeTip);
       tt.setAttribute('aria-label', d.themeTip);
@@ -553,7 +557,7 @@ sub { font-size: 0.65em; line-height: 0; }
       }
       var r = buildSegs(v);
       currentSegs = r.segs;
-      result.innerHTML = segsToHTML(r.segs);
+      result.innerHTML = '<div>' + segsToHTML(r.segs) + '</div>';
       lastErrors = r.errors;
       showNote();
     }
