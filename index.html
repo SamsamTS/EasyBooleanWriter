@@ -18,6 +18,7 @@
   --err: #c62828;
   --err-bg: rgba(198, 40, 40, 0.12);
 }
+/* The theme is always set on <html> by the script (saved choice, else OS preference). */
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #12151a;
@@ -146,6 +147,7 @@ button svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-lin
 .ov.ov2 { padding-top: round(0.2em, 1px); }
 .andgap { display: inline-block; width: 0.18em; }
 .par { display: inline-block; }
+/* Spacing on the inner side only: after "(" and before ")". */
 .par.po { margin-right: 0.14em; }
 .par.pc { margin-left: 0.14em; }
 .op { font-size: 0.8em; }
@@ -166,7 +168,7 @@ sub { font-size: 0.65em; line-height: 0; }
 
 /* Download / copy controls */
 .dl-btn { position: absolute; top: 8px; right: 8px; }
-.copy-btn { right: 72px; }
+.copy-group { right: 72px; }
 .copy-btn .i-ok, .copy-btn.ok .i-copy { display: none; }
 .copy-btn.ok .i-ok { display: block; }
 .dl-group { display: flex; align-items: stretch; }
@@ -211,7 +213,7 @@ sub { font-size: 0.65em; line-height: 0; }
   .icon-btn { width: 40px; height: 40px; }
   .theme-toggle { top: 10px; right: 10px; }
   .lang-toggle { right: 56px; }
-  .copy-btn { right: 76px; }
+  .copy-group { right: 76px; }
 }
 </style>
 </head>
@@ -243,10 +245,20 @@ sub { font-size: 0.65em; line-height: 0; }
         <li role="option" data-fmt="svg" aria-selected="false">SVG</li>
       </ul>
     </div>
-    <button id="copyBtn" class="icon-btn dl-btn copy-btn" type="button" disabled>
-      <svg class="i-copy" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg>
-      <svg class="i-ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
-    </button>
+    <div id="copyGroup" class="dl-btn dl-group copy-group">
+      <button id="copyBtn" class="icon-btn seg-main copy-btn" type="button" disabled>
+        <svg class="i-copy" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg>
+        <svg class="i-ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+      </button>
+      <button id="copyFmtBtn" class="seg-arrow" type="button" aria-haspopup="listbox" aria-expanded="false" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+      </button>
+      <ul id="copyFmtMenu" class="fmt-menu" role="listbox" hidden>
+        <li role="option" data-fmt="png" aria-selected="true">PNG</li>
+        <li role="option" data-fmt="latex" aria-selected="false">LaTeX</li>
+        <li role="option" data-fmt="mathml" aria-selected="false">MathML</li>
+      </ul>
+    </div>
     <div id="note"></div>
   </div>
 </main>
@@ -257,10 +269,10 @@ const I18N = {
     pageTitle: 'Easy Boolean Writer',
     clear: 'Clear',
     themeTip: 'Toggle light / dark theme',
-    dlPng: 'Download as PNG',
-    dlSvg: 'Download as SVG',
+    download: f => `Download as ${f}`,
     fmtTip: 'Download format',
-    copy: 'Copy to clipboard as PNG',
+    copy: f => `Copy to clipboard as ${f}`,
+    copyFmtTip: 'Copy format',
     langTip: 'Passer en français',
     line: n => `Line ${n}: `,
     // Messages are concatenated with the offending character (if any), hence the trailing space on "unknown".
@@ -275,10 +287,10 @@ const I18N = {
     pageTitle: 'Écriture Booléenne Facile',
     clear: 'Effacer',
     themeTip: 'Basculer entre thème clair et sombre',
-    dlPng: 'Télécharger en PNG',
-    dlSvg: 'Télécharger en SVG',
+    download: f => `Télécharger en ${f}`,
     fmtTip: 'Format de téléchargement',
-    copy: 'Copier dans le presse-papiers en PNG',
+    copy: f => `Copier dans le presse-papiers en ${f}`,
+    copyFmtTip: 'Format de copie',
     langTip: 'Switch to English',
     line: n => `Ligne ${n} : `,
     err: {
@@ -497,12 +509,12 @@ function segsToHTML(segs) {
 
 /* ---------------- DOM wiring ---------------- */
 const KEY_INPUT = 'boolnotation.input', KEY_THEME = 'boolnotation.theme';
-const KEY_LANG = 'boolnotation.lang', KEY_FMT = 'boolnotation.fmt';
+const KEY_LANG = 'boolnotation.lang', KEY_FMT = 'boolnotation.fmt', KEY_COPY_FMT = 'boolnotation.copyfmt';
 
 const $ = id => document.getElementById(id);
 const root = document.documentElement;
-const input = $('expr'), result = $('result'), note = $('note');
-const fmtBtn = $('fmtBtn'), fmtMenu = $('fmtMenu'), copyBtn = $('copyBtn');
+const input = $('expr'), result = $('result'), note = $('note'), copyBtn = $('copyBtn');
+const FORMAT_NAMES = { png: 'PNG', svg: 'SVG', latex: 'LaTeX', mathml: 'MathML' };
 
 // localStorage may be unavailable (private mode, blocked cookies): fail silently.
 const store = {
@@ -527,11 +539,11 @@ $('themeToggle').addEventListener('click', () => {
 /* language and format */
 const savedLang = store.get(KEY_LANG);
 let lang = savedLang in I18N ? savedLang : /^fr/i.test(navigator.language) ? 'fr' : 'en';
-let fmt = store.get(KEY_FMT) === 'svg' ? 'svg' : 'png';
 let lastError = null, lineCount = 1;
 
 const setTip = (id, text) => { const el = $(id); el.title = text; el.ariaLabel = text; };
-const updateDlTip = () => setTip('svgBtn', I18N[lang][fmt === 'svg' ? 'dlSvg' : 'dlPng']);
+const updateDlTip = () => setTip('svgBtn', I18N[lang].download(FORMAT_NAMES[dlMenu.fmt]));
+const updateCopyTip = () => setTip('copyBtn', I18N[lang].copy(FORMAT_NAMES[copyMenu.fmt]));
 
 function showNote() {
   const d = I18N[lang];
@@ -547,9 +559,10 @@ function applyLang() {
   $('langToggle').textContent = lang.toUpperCase();
   setTip('themeToggle', d.themeTip);
   setTip('fmtBtn', d.fmtTip);
-  setTip('copyBtn', d.copy);
+  setTip('copyFmtBtn', d.copyFmtTip);
   setTip('langToggle', d.langTip);
   updateDlTip();
+  updateCopyTip();
   showNote();
 }
 $('langToggle').addEventListener('click', () => {
@@ -620,9 +633,9 @@ function render() {
   } else {
     // Empty input: show the placeholder example as a greyed, non-interactive preview.
     result.innerHTML = `<div class="rblock demo"><div>${segsToHTML(buildSegs(input.placeholder).segs)}</div></div>`;
-    setMenu(false);
+    closeMenus();
   }
-  for (const id of ['svgBtn', 'fmtBtn', 'copyBtn']) $(id).disabled = !any;
+  for (const id of ['svgBtn', 'fmtBtn', 'copyBtn', 'copyFmtBtn']) $(id).disabled = !any;
   showNote();
   fixParens();
 }
@@ -737,8 +750,92 @@ function saveBlob(blob, name) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/* ---------------- Equation text export (LaTeX / MathML) ---------------- */
+// Operator symbols as [LaTeX, MathML], keyed by the trimmed segment text.
+const OPS = { '·': ['\\cdot ', '·'], '⊕': ['\\oplus ', '⊕'], '+': ['+', '+'] };
+const wrapOverline = (n, s, wrap) => { for (let i = 0; i < n; i++) s = wrap(s); return s; };
+
+function toLatex(segs) {
+  let depth = 0;
+  const out = segs.map(g => {
+    switch (g.t) {
+      case 'text': return g.s.trim();
+      case 'op': return OPS[g.s.trim()][0];
+      case 'par': depth += g.s === '(' ? 1 : -1; return g.s === '(' ? '\\left(' : '\\right)';
+      case 'bar': return `\\overline{${toLatex(g.kids)}}`;
+      case 'var': return wrapOverline(g.n, g.base + (g.sub ? `_{${g.sub}}` : ''), s => `\\overline{${s}}`);
+      default: return '';   // error markers and paren-group markers
+    }
+  }).join('');
+  return out + '\\right.'.repeat(depth);   // close a parenthesis the user left open
+}
+
+function toMathML(segs) {
+  const token = s => (/^\d+$/.test(s) ? `<mn>${s}</mn>` : `<mi>${s}</mi>`);
+  const over = s => `<mover accent="true"><mrow>${s}</mrow><mo>&#x203E;</mo></mover>`;
+  return segs.map(g => {
+    switch (g.t) {
+      case 'text': return `<mo>${g.s.trim()}</mo>`;
+      case 'op': return `<mo>${OPS[g.s.trim()][1]}</mo>`;
+      case 'par': return `<mo>${g.s}</mo>`;
+      case 'bar': return over(toMathML(g.kids));
+      case 'var': return wrapOverline(g.n, g.sub ? `<msub>${token(g.base)}${token(g.sub)}</msub>` : token(g.base), over);
+      default: return '';
+    }
+  }).join('');
+}
+
+const MATHML_OPEN = '<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">';
+const COPY_TEXT = {
+  latex: segs => toLatex(segs),
+  mathml: segs => `${MATHML_OPEN}<mrow>${toMathML(segs)}</mrow></math>`
+};
+// One equation per non-empty input line.
+const equationText = fmt => input.value.split(/\r\n|\r|\n/).filter(l => l.trim())
+  .map(line => COPY_TEXT[fmt](buildSegs(line).segs)).join('\n');
+
+/* ---------------- Format dropdowns (download and copy) ---------------- */
+const menus = [];
+const closeMenus = () => menus.forEach(m => m.setOpen(false));
+
+// Wires a split-button dropdown: the chosen format is remembered and `onChange` refreshes the main button's tooltip.
+function makeFormatMenu(btn, menu, storeKey, formats, onChange) {
+  const m = {
+    fmt: formats.includes(store.get(storeKey)) ? store.get(storeKey) : formats[0],
+    setOpen(open) {
+      menu.hidden = !open;
+      btn.setAttribute('aria-expanded', open);
+    },
+    mark() {
+      for (const li of menu.querySelectorAll('li')) li.setAttribute('aria-selected', li.dataset.fmt === m.fmt);
+      onChange();
+    }
+  };
+  btn.addEventListener('click', ev => {
+    ev.stopPropagation();
+    const open = menu.hidden;
+    closeMenus();
+    m.setOpen(open);
+  });
+  menu.addEventListener('click', ev => {
+    const li = ev.target.closest('li');
+    if (!li) return;
+    m.fmt = li.dataset.fmt;
+    store.set(storeKey, m.fmt);
+    m.mark();
+    m.setOpen(false);
+  });
+  menus.push(m);
+  return m;
+}
+const dlMenu = makeFormatMenu($('fmtBtn'), $('fmtMenu'), KEY_FMT, ['png', 'svg'], updateDlTip);
+const copyMenu = makeFormatMenu($('copyFmtBtn'), $('copyFmtMenu'), KEY_COPY_FMT, ['png', 'latex', 'mathml'], updateCopyTip);
+document.addEventListener('click', closeMenus);
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeMenus(); });
+
+/* download */
 $('svgBtn').addEventListener('click', () => {
-  if (fmt === 'svg') {
+  if (dlMenu.fmt === 'svg') {
     const svg = buildSVG();
     if (svg) saveBlob(svgBlob(svg), 'boolean-expression.svg');
   } else {
@@ -746,38 +843,17 @@ $('svgBtn').addEventListener('click', () => {
   }
 });
 
-/* download format dropdown (affects the download button only, not the clipboard copy) */
-function setMenu(open) {
-  fmtMenu.hidden = !open;
-  fmtBtn.setAttribute('aria-expanded', open);
-}
-function markFmt() {
-  for (const li of fmtMenu.querySelectorAll('li')) li.setAttribute('aria-selected', li.dataset.fmt === fmt);
-  updateDlTip();
-}
-fmtBtn.addEventListener('click', ev => {
-  ev.stopPropagation();
-  setMenu(fmtMenu.hidden);
-});
-fmtMenu.addEventListener('click', ev => {
-  const li = ev.target.closest('li');
-  if (!li) return;
-  fmt = li.dataset.fmt;
-  store.set(KEY_FMT, fmt);
-  markFmt();
-  setMenu(false);
-});
-document.addEventListener('click', () => setMenu(false));
-document.addEventListener('keydown', ev => { if (ev.key === 'Escape') setMenu(false); });
-
 /* clipboard (navigator.clipboard is missing in insecure contexts) */
-if (!navigator.clipboard?.write) copyBtn.style.display = 'none';
-copyBtn.addEventListener('click', () => {
-  // The promise is handed over right away so the copy keeps the user gesture (needed by Safari).
-  navigator.clipboard.write([new ClipboardItem({ 'image/png': toPNG() })]).then(() => {
-    copyBtn.classList.add('ok');
-    setTimeout(() => copyBtn.classList.remove('ok'), 1500);
-  }).catch(() => {});
+if (!navigator.clipboard?.writeText) $('copyGroup').style.display = 'none';
+copyBtn.addEventListener('click', async () => {
+  try {
+    // For PNG the promise is handed over right away so the copy keeps the user gesture (needed by Safari).
+    await (copyMenu.fmt === 'png'
+      ? navigator.clipboard.write([new ClipboardItem({ 'image/png': toPNG() })])
+      : navigator.clipboard.writeText(equationText(copyMenu.fmt)));
+  } catch { return; }
+  copyBtn.classList.add('ok');
+  setTimeout(() => copyBtn.classList.remove('ok'), 1500);
 });
 
 /* input */
@@ -793,7 +869,8 @@ $('clearBtn').addEventListener('click', () => {
 });
 
 input.value = store.get(KEY_INPUT) ?? '';
-markFmt();
+dlMenu.mark();
+copyMenu.mark();
 applyLang();
 render();
 </script>
