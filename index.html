@@ -162,6 +162,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .dl-btn { position: absolute; top: 8px; right: 8px; }
 .dl-btn:disabled { opacity: 0.4; cursor: default; }
 .dl-btn:disabled:hover { background: var(--btn); }
+#result .demo { opacity: 0.3; user-select: none; -webkit-user-select: none; pointer-events: none; }
 .copy-btn { right: 52px; }
 .copy-btn .i-ok { display: none; }
 .copy-btn.ok .i-ok { display: block; }
@@ -590,7 +591,12 @@ sub { font-size: 0.65em; line-height: 0; }
           errs = [{ key: r.errors[0].key, c: r.errors[0].c, line: i + 1 }];
         }
       }
-      result.innerHTML = any ? '<div class="rblock">' + html + '</div>' : '';
+      if (any) {
+        result.innerHTML = '<div class="rblock">' + html + '</div>';
+      } else {
+        /* Empty input: show the placeholder example as a greyed, non-interactive preview. */
+        result.innerHTML = '<div class="rblock demo"><div>' + segsToHTML(buildSegs(I18N[lang].placeholder).segs) + '</div></div>';
+      }
       document.getElementById('svgBtn').disabled = !any;
       document.getElementById('copyBtn').disabled = !any;
       lastErrors = errs;
@@ -600,7 +606,7 @@ sub { font-size: 0.65em; line-height: 0; }
     /* SVG export: reads the laid-out result from the DOM so the SVG matches what is on screen */
     function buildSVG() {
       var block = result.querySelector('.rblock');
-      if (!block) { return null; }
+      if (!block || block.classList.contains('demo')) { return null; }
       var lines = [], texts = [], nodes = [], i, r, cs, w, n;
       var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, pad = 10;
       function ext(l, t, rr, b) {
