@@ -18,7 +18,6 @@
   --err: #c62828;
   --err-bg: rgba(198, 40, 40, 0.12);
 }
-/* The theme is always set on <html> by the script (saved choice, else OS preference). */
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #12151a;
@@ -69,13 +68,12 @@ label {
   color: var(--muted);
   margin-bottom: 6px;
 }
-.row { display: flex; align-items: flex-start; gap: 8px; }
+.field { position: relative; }
 #expr {
-  flex: 1 1 auto;
-  min-width: 0;
+  width: 100%;
   font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   font-size: 1.1rem;
-  padding: 10px 12px;
+  padding: 10px 44px 10px 12px;   /* right padding leaves room for the clear button */
   color: var(--fg);
   background: var(--bg);
   border: 1px solid var(--border);
@@ -102,7 +100,9 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 button:disabled { opacity: 0.4; cursor: default; }
 button:disabled:hover { background: var(--btn); }
 button svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
-#clearBtn { padding: 0 16px; height: calc(1.1rem * 1.4 + 22px); flex: 0 0 auto; }
+#clearBtn { position: absolute; top: 6px; right: 6px; width: 32px; height: 32px; background: transparent; border: none; border-radius: 50%; color: var(--muted); }
+#clearBtn:hover { background: var(--btn-hover); color: var(--fg); }
+#clearBtn[hidden] { display: none; }
 .icon-btn {
   display: inline-flex;
   align-items: center;
@@ -147,7 +147,6 @@ button svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-lin
 .ov.ov2 { padding-top: round(0.2em, 1px); }
 .andgap { display: inline-block; width: 0.18em; }
 .par { display: inline-block; }
-/* Spacing on the inner side only: after "(" and before ")". */
 .par.po { margin-right: 0.14em; }
 .par.pc { margin-left: 0.14em; }
 .op { font-size: 0.8em; }
@@ -205,10 +204,8 @@ sub { font-size: 0.65em; line-height: 0; }
   main { padding: 60px 12px 24px 12px; }
   .panel { padding: 12px; }
   #outputPanel { padding: 24px 12px; }
-  .row { gap: 6px; }
-  #expr { font-size: 16px; padding: 10px; }
+  #expr { font-size: 16px; padding: 10px 44px 10px 10px; }
   #expr::placeholder { font-size: 0.85em; }
-  #clearBtn { padding: 0 12px; height: calc(16px * 1.4 + 22px); }
   #result { font-size: 1.5rem; }
   .icon-btn { width: 40px; height: 40px; }
   .theme-toggle { top: 10px; right: 10px; }
@@ -226,9 +223,11 @@ sub { font-size: 0.65em; line-height: 0; }
   <h1 id="title">Easy Boolean Writer</h1>
   <div class="panel">
     <label for="expr">Expression</label>
-    <div class="row">
+    <div class="field">
       <textarea id="expr" rows="1" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="S = (/(/AB) + C0 ^ D_ef).F"></textarea>
-      <button id="clearBtn" type="button">Clear</button>
+      <button id="clearBtn" class="icon-btn" type="button" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
+      </button>
     </div>
   </div>
   <div id="outputPanel" class="panel">
@@ -555,7 +554,7 @@ function applyLang() {
   const d = I18N[lang];
   root.lang = lang;
   document.title = $('title').textContent = d.pageTitle;
-  $('clearBtn').textContent = d.clear;
+  setTip('clearBtn', d.clear);
   $('langToggle').textContent = lang.toUpperCase();
   setTip('themeToggle', d.themeTip);
   setTip('fmtBtn', d.fmtTip);
@@ -636,6 +635,7 @@ function render() {
     closeMenus();
   }
   for (const id of ['svgBtn', 'fmtBtn', 'copyBtn', 'copyFmtBtn']) $(id).disabled = !any;
+  $('clearBtn').hidden = !input.value;
   showNote();
   fixParens();
 }
