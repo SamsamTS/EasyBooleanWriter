@@ -137,11 +137,16 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 }
 .ov {
   display: inline-block;
-  border-top: 0.07em solid currentColor;
-  padding-top: 0.05em;
+  /* Whole-pixel metrics (plain px first as a fallback, round() where supported): fractional em values get
+     snapped to device pixels differently from one bar to the next, which made the gaps look uneven. */
+  border-top: 2px solid currentColor;
+  border-top-width: round(0.07em, 1px);
+  padding-top: 0;
   margin: 0 0.07em;
   line-height: 1.1;
+  line-height: round(1.1em, 1px);
 }
+.ov.ov2 { padding-top: 6px; padding-top: round(0.2em, 1px); }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 #result { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; overflow-x: auto; overflow-y: hidden; }
 @media (max-width: 520px) {
@@ -158,6 +163,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .lang-toggle { right: 56px; }
 }
 .ovgap { display: inline-block; width: 0.14em; }
+.par { display: inline-block; }
 .op { font-size: 0.8em; }
 .dl-btn { position: absolute; top: 8px; right: 8px; }
 .dl-btn:disabled { opacity: 0.4; cursor: default; }
@@ -209,7 +215,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 .err.ghost { color: var(--err); opacity: 0.7; }
 #result .rblock { width: fit-content; max-width: 100%; margin: 0 auto; text-align: left; }
-#result .rblock > div { line-height: 1.45; }
+#result .rblock > div { line-height: 1.45; line-height: round(1.45em, 1px); }
 #result .blank { height: 0.6em; line-height: 0; }
 #note {
   position: absolute;
@@ -443,9 +449,19 @@ sub { font-size: 0.65em; line-height: 0; }
       case 'err':
         return [{ t: 'err', s: n.text, ghost: n.ghost }];
       case 'paren':
-        out.push(txt('('));
-        out = out.concat(renderNode(n.x));
-        out.push(n.open ? { t: 'err', s: ')', ghost: true } : txt(')'));
+        var inner = renderNode(n.x), h = 0, k, closeSeg;
+        for (k = 0; k < inner.length; k++) { h = Math.max(h, segHeight(inner[k])); }
+        closeSeg = n.open ? { t: 'err', s: ')', ghost: true } : { t: 'par', s: ')' };
+        if (h > 0) {
+          /* Parentheses around overlines are stretched later (fixParens) so their top reaches the bar. */
+          out.push({ t: 'pgo' }, { t: 'par', s: '(' });
+          out = out.concat(inner);
+          out.push(closeSeg, { t: 'pgc' });
+        } else {
+          out.push(txt('('));
+          out = out.concat(inner);
+          out.push(n.open ? closeSeg : txt(')'));
+        }
         return out;
       case 'not':
         return renderNot(n);
@@ -518,6 +534,12 @@ sub { font-size: 0.65em; line-height: 0; }
       prevOv = isOv;
       if (g.t === 'text') {
         out += esc(g.s);
+      } else if (g.t === 'pgo') {
+        out += '<span class="pg">';
+      } else if (g.t === 'pgc') {
+        out += '</span>';
+      } else if (g.t === 'par') {
+        out += '<span class="par">' + esc(g.s) + '</span>';
       } else if (g.t === 'op') {
         out += ' <span class="op">' + esc(g.s.replace(/^\s+|\s+$/g, '')) + '</span> ';
       } else if (g.t === 'err') {
@@ -551,8 +573,7 @@ sub { font-size: 0.65em; line-height: 0; }
   function ovOpen(level) {
     /* Level 1 hugs the text; every outer level adds the same fixed gap above the bar it contains,
        so the spacing between stacked overlines is identical whatever the depth. */
-    var pad = level <= 1 ? 0.05 : 0.2;
-    return '<span class="ov" style="padding-top:' + pad.toFixed(2) + 'em">';
+    return '<span class="ov' + (level > 1 ? ' ov2' : '') + '">';
   }
 
   /* ---------------- DOM wiring ---------------- */
@@ -663,7 +684,48 @@ sub { font-size: 0.65em; line-height: 0; }
       document.getElementById('copyBtn').disabled = !any;
       lastErrors = errs;
       showNote();
+      fixParens();
     }
+
+    /* Stretch the parentheses of a group upwards so their top sits at the level of its tallest overline. */
+    var measureCtx = document.createElement('canvas').getContext('2d');
+    function fixParens() {
+      var pars = result.querySelectorAll('.par'), groups = result.querySelectorAll('.pg'), i, j;
+      for (i = 0; i < pars.length; i++) {
+        pars[i].style.transform = '';
+        pars[i].removeAttribute('data-sy');
+        pars[i].removeAttribute('data-od');
+      }
+      if (!measureCtx) { return; }
+      for (i = 0; i < groups.length; i++) {
+        var ovs = groups[i].querySelectorAll('.ov'), top = Infinity, k;
+        for (k = 0; k < ovs.length; k++) { top = Math.min(top, ovs[k].getBoundingClientRect().top); }
+        if (top === Infinity) { continue; }
+        for (j = 0; j < groups[i].children.length; j++) {
+          var p = groups[i].children[j];
+          if (!p.classList.contains('par')) { continue; }
+          var cs = window.getComputedStyle(p);
+          measureCtx.font = cs.fontSize + ' ' + cs.fontFamily;
+          var m = measureCtx.measureText(p.textContent);
+          var asc = m.actualBoundingBoxAscent, desc = m.actualBoundingBoxDescent;
+          if (!(asc + desc > 0)) { continue; }
+          var probe = document.createElement('span');
+          probe.style.cssText = 'display:inline-block;width:0;height:0';
+          p.insertBefore(probe, p.firstChild);
+          var base = probe.getBoundingClientRect().bottom;
+          p.removeChild(probe);
+          var sy = (base + desc - top) / (asc + desc);
+          if (!(sy > 1.02)) { continue; }
+          var oy = base + desc - p.getBoundingClientRect().top;
+          p.style.transformOrigin = '0 ' + oy.toFixed(2) + 'px';
+          p.style.transform = 'scaleY(' + sy.toFixed(4) + ')';
+          p.setAttribute('data-sy', sy.toFixed(4));
+          p.setAttribute('data-od', desc.toFixed(2));
+        }
+      }
+    }
+    window.addEventListener('resize', fixParens);
+    if (document.fonts && document.fonts.ready) { document.fonts.ready.then(fixParens); }
 
     /* SVG export: reads the laid-out result from the DOM so the SVG matches what is on screen */
     function buildSVG() {
@@ -685,6 +747,9 @@ sub { font-size: 0.65em; line-height: 0; }
       }
       var walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, null, false);
       while ((n = walker.nextNode())) { nodes.push(n); }
+      /* Measure stretched parentheses untransformed; the stretch is re-applied as an SVG transform. */
+      var pars = block.querySelectorAll('.par'), savedTf = [];
+      for (i = 0; i < pars.length; i++) { savedTf.push(pars[i].style.transform); pars[i].style.transform = 'none'; }
       for (i = 0; i < nodes.length; i++) {
         n = nodes[i];
         var s = n.nodeValue;
@@ -701,9 +766,14 @@ sub { font-size: 0.65em; line-height: 0; }
         var base = probe.getBoundingClientRect().bottom;
         parent.removeChild(probe);
         cs = window.getComputedStyle(parent);
-        texts.push({ x: r.left, y: base, w: r.width, size: cs.fontSize, s: s.slice(a, b) });
+        texts.push({
+          x: r.left, y: base, w: r.width, size: cs.fontSize, s: s.slice(a, b),
+          sy: parseFloat(parent.getAttribute && parent.getAttribute('data-sy')) || 1,
+          od: parseFloat(parent.getAttribute && parent.getAttribute('data-od')) || 0
+        });
         ext(r.left, r.top, r.right, r.bottom);
       }
+      for (i = 0; i < pars.length; i++) { pars[i].style.transform = savedTf[i]; }
       if (minX === Infinity) { return null; }
       var W = maxX - minX + 2 * pad, H = maxY - minY + 2 * pad;
       var ox = pad - minX, oy = pad - minY;
@@ -713,9 +783,13 @@ sub { font-size: 0.65em; line-height: 0; }
         '" viewBox="0 0 ' + f(W) + ' ' + f(H) + '">\n' +
         '<g fill="#000" stroke="none" font-family="' + esc(FONT) + '">\n';
       for (i = 0; i < texts.length; i++) {
-        var t = texts[i];
+        var t = texts[i], tf = '';
+        if (t.sy !== 1) {
+          var y0 = t.y + oy + t.od;
+          tf = ' transform="translate(0 ' + f(y0) + ') scale(1 ' + t.sy + ') translate(0 ' + f(-y0) + ')"';
+        }
         svg += '<text x="' + f(t.x + ox) + '" y="' + f(t.y + oy) + '" font-size="' + parseFloat(t.size) +
-          '" textLength="' + f(t.w) + '" lengthAdjust="spacing">' + esc(t.s) + '</text>\n';
+          '" textLength="' + f(t.w) + '" lengthAdjust="spacing"' + tf + '>' + esc(t.s) + '</text>\n';
       }
       svg += '</g>\n<g stroke="#000" fill="none">\n';
       for (i = 0; i < lines.length; i++) {
