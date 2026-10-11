@@ -100,6 +100,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 button:disabled { opacity: 0.4; cursor: default; }
 button:disabled:hover { background: var(--btn); }
 button svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+
 #clearBtn { position: absolute; top: 6px; right: 6px; width: 32px; height: 32px; background: transparent; border: none; border-radius: 50%; color: var(--muted); }
 #clearBtn:hover { background: var(--btn-hover); color: var(--fg); }
 #clearBtn[hidden] { display: none; }
@@ -256,6 +257,8 @@ sub { font-size: 0.65em; line-height: 0; }
         <li role="option" data-fmt="png" aria-selected="true">PNG</li>
         <li role="option" data-fmt="latex" aria-selected="false">LaTeX</li>
         <li role="option" data-fmt="mathml" aria-selected="false">MathML</li>
+        <li role="option" data-fmt="starmath" aria-selected="false">StarMath</li>
+        <li role="option" data-fmt="asciimath" aria-selected="false">AsciiMath</li>
       </ul>
     </div>
     <div id="note"></div>
@@ -274,7 +277,6 @@ const I18N = {
     copyFmtTip: 'Copy format',
     langTip: 'Passer en français',
     line: n => `Line ${n}: `,
-    // Messages are concatenated with the offending character (if any), hence the trailing space on "unknown".
     err: {
       missing: 'Missing operand',
       open: 'Unbalanced parenthesis: missing )',
@@ -312,7 +314,6 @@ function tokenize(src) {
     const c = src[i];
     if (/\s/.test(c)) { i++; continue; }
     if (/[A-Za-z]/.test(c)) {
-      // Variable with an optional subscript: A0, A12, A_ef
       const t = { type: 'var', base: c, sub: '' };
       i++;
       if (src[i] === '_') {
@@ -349,7 +350,6 @@ function tokenize(src) {
 }
 
 /* ---------------- Parser (recursive descent) ---------------- */
-// Precedence, lowest to highest: = , + , ^ , AND (explicit "." or implicit juxtaposition) , NOT
 const UNARY_START = new Set(['var', 'const', 'not', '(', 'bad']);
 const OPERATORS = new Set(['+', '.', '^', '=', ')']);
 
@@ -365,7 +365,6 @@ function parse(src) {
     addError('missing');
     return { type: 'err', text: '□', ghost: true };
   };
-  // Builds a parser for `a SEP a SEP a ...`
   const chain = (type, sep, next) => () => {
     const items = [next()];
     while (peek()?.type === sep) { pos++; items.push(next()); }
@@ -423,8 +422,6 @@ function parse(src) {
 const isAtom = n => n.type === 'var' || n.type === 'const';
 const txt = s => ({ t: 'text', s });
 
-// Height of a segment in overline levels: a bar sits one level above its tallest child,
-// so a bar over elements without overlines shares the level of a single-variable overline.
 function segHeight(g) {
   if (g.t === 'var') return g.n || 0;
   if (g.t === 'bar') return Math.max(0, ...g.kids.map(segHeight)) + 1;
@@ -441,7 +438,6 @@ function renderNode(n) {
       const inner = renderNode(n.x);
       const close = n.open ? { t: 'err', s: ')', ghost: true } : { t: 'par', s: ')' };
       if (Math.max(0, ...inner.map(segHeight)) > 0) {
-        // Parentheses around overlines are stretched later (fixParens) so their top reaches the bar.
         return [{ t: 'pgo' }, { t: 'par', s: '(' }, ...inner, close, { t: 'pgc' }];
       }
       return [{ t: 'par', s: '(' }, ...inner, close];
@@ -450,7 +446,6 @@ function renderNode(n) {
       return n.items.flatMap((item, i) => {
         if (i === 0) return renderNode(item);
         const dot = n.seps[i - 1] || (n.items[i - 1].type === 'const' && item.type === 'const');
-        // Implied AND: one constant gap, whether or not the neighbours carry an overline.
         return [dot ? { t: 'op', s: ' · ' } : { t: 'gap' }, ...renderNode(item)];
       });
     case 'xor': return joinItems(n.items, { t: 'op', s: ' ⊕ ' });
@@ -468,7 +463,6 @@ function renderNot({ x }) {
   }
   const content = renderNode(x.type === 'paren' ? x.x : x);
   const ghost = x.type === 'paren' && x.open ? [{ t: 'err', s: ')', ghost: true }] : [];
-  // A negated single variable just gains one more overline level.
   if (content.length === 1 && content[0].t === 'var' && content[0].n >= 1) {
     content[0].n++;
     return [...content, ...ghost];
@@ -482,8 +476,6 @@ function buildSegs(src) {
 }
 
 /* ---------------- Segments to HTML ---------------- */
-// Level 1 hugs the text; every outer level adds the same fixed gap above the bar it contains,
-// so the spacing between stacked overlines is identical whatever the depth.
 const overline = (level, html) => `<span class="ov${level > 1 ? ' ov2' : ''}">${html}</span>`;
 
 function segsToHTML(segs) {
@@ -513,9 +505,8 @@ const KEY_LANG = 'boolnotation.lang', KEY_FMT = 'boolnotation.fmt', KEY_COPY_FMT
 const $ = id => document.getElementById(id);
 const root = document.documentElement;
 const input = $('expr'), result = $('result'), note = $('note'), copyBtn = $('copyBtn');
-const FORMAT_NAMES = { png: 'PNG', svg: 'SVG', latex: 'LaTeX', mathml: 'MathML' };
+const FORMAT_NAMES = { png: 'PNG', svg: 'SVG', latex: 'LaTeX', mathml: 'MathML', starmath: 'StarMath', asciimath: 'AsciiMath' };
 
-// localStorage may be unavailable (private mode, blocked cookies): fail silently.
 const store = {
   get: k => { try { return localStorage.getItem(k); } catch { return null; } },
   set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* ignore */ } },
@@ -577,7 +568,6 @@ function autosize() {
   input.style.height = `${input.scrollHeight + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth)}px`;
 }
 
-// Baseline y-position (viewport coordinates) of a node, measured with a zero-size inline-block placed before it.
 function baselineY(node) {
   const probe = document.createElement('span');
   probe.style.cssText = 'display:inline-block;width:0;height:0';
@@ -587,7 +577,6 @@ function baselineY(node) {
   return y;
 }
 
-// Stretch the parentheses of a group upwards so their top sits at the level of its tallest overline.
 const measureCtx = document.createElement('canvas').getContext('2d');
 function fixParens() {
   for (const p of result.querySelectorAll('.par')) {
@@ -630,7 +619,6 @@ function render() {
     });
     result.innerHTML = `<div class="rblock">${rows.join('')}</div>`;
   } else {
-    // Empty input: show the placeholder example as a greyed, non-interactive preview.
     result.innerHTML = `<div class="rblock demo"><div>${segsToHTML(buildSegs(input.placeholder).segs)}</div></div>`;
     closeMenus();
   }
@@ -663,7 +651,6 @@ function buildSVG() {
     extend(r);
   }
 
-  // Measure stretched parentheses untransformed; the stretch is re-applied as an SVG transform.
   const pars = [...block.querySelectorAll('.par')];
   const savedTransforms = pars.map(p => p.style.transform);
   pars.forEach(p => { p.style.transform = 'none'; });
@@ -751,8 +738,7 @@ function saveBlob(blob, name) {
 }
 
 /* ---------------- Equation text export (LaTeX / MathML) ---------------- */
-// Operator symbols as [LaTeX, MathML], keyed by the trimmed segment text.
-const OPS = { '·': ['\\cdot ', '·'], '⊕': ['\\oplus ', '⊕'], '+': ['+', '+'] };
+const OPS = { '·': ['\\cdot ', '·', 'cdot'], '⊕': ['\\oplus ', '⊕', 'oplus'], '+': ['+', '+', '+'] };
 const wrapOverline = (n, s, wrap) => { for (let i = 0; i < n; i++) s = wrap(s); return s; };
 
 function toLatex(segs) {
@@ -764,10 +750,10 @@ function toLatex(segs) {
       case 'par': depth += g.s === '(' ? 1 : -1; return g.s === '(' ? '\\left(' : '\\right)';
       case 'bar': return `\\overline{${toLatex(g.kids)}}`;
       case 'var': return wrapOverline(g.n, g.base + (g.sub ? `_{${g.sub}}` : ''), s => `\\overline{${s}}`);
-      default: return '';   // error markers and paren-group markers
+      default: return '';
     }
   }).join('');
-  return out + '\\right.'.repeat(depth);   // close a parenthesis the user left open
+  return out + '\\right.'.repeat(depth);
 }
 
 function toMathML(segs) {
@@ -785,20 +771,49 @@ function toMathML(segs) {
   }).join('');
 }
 
-const MATHML_OPEN = '<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">';
+function toStarMath(segs) {
+  let depth = 0;
+  const out = segs.map(g => {
+    switch (g.t) {
+      case 'text': return g.s.trim();
+      case 'op': return OPS[g.s.trim()][2];
+      case 'par': depth += g.s === '(' ? 1 : -1; return g.s === '(' ? 'left (' : 'right )';
+      case 'bar': return `overline{${toStarMath(g.kids)}}`;
+      case 'var': return wrapOverline(g.n, g.base + (g.sub ? `_{${g.sub}}` : ''), s => `overline{${s}}`);
+      default: return '';
+    }
+  }).filter(Boolean).join(' ');
+  return depth > 0 ? `${out} ${'right none '.repeat(depth).trim()}` : out;   // close a parenthesis left open
+}
+
+function toAsciiMath(segs) {
+  return segs.map(g => {
+    switch (g.t) {
+      case 'text': return g.s.trim();
+      case 'op': return OPS[g.s.trim()][2];
+      case 'par': return g.s;
+      case 'bar': return `bar(${toAsciiMath(g.kids)})`;
+      case 'var': return wrapOverline(g.n, g.base + (g.sub ? `_(${g.sub})` : ''), s => `bar(${s})`);
+      default: return '';
+    }
+  }).filter(Boolean).join(' ');
+}
+
+const MATHML_OPEN ='<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">';
 const COPY_TEXT = {
-  latex: segs => toLatex(segs),
-  mathml: segs => `${MATHML_OPEN}<mrow>${toMathML(segs)}</mrow></math>`
+  latex: toLatex,
+  mathml: segs => `${MATHML_OPEN}<mrow>${toMathML(segs)}</mrow></math>`,
+  starmath: toStarMath,
+  asciimath: toAsciiMath
 };
-// One equation per non-empty input line.
+const LINE_JOIN = { starmath: '\nnewline\n' };
 const equationText = fmt => input.value.split(/\r\n|\r|\n/).filter(l => l.trim())
-  .map(line => COPY_TEXT[fmt](buildSegs(line).segs)).join('\n');
+  .map(line => COPY_TEXT[fmt](buildSegs(line).segs)).join(LINE_JOIN[fmt] ?? '\n');
 
 /* ---------------- Format dropdowns (download and copy) ---------------- */
 const menus = [];
 const closeMenus = () => menus.forEach(m => m.setOpen(false));
 
-// Wires a split-button dropdown: the chosen format is remembered and `onChange` refreshes the main button's tooltip.
 function makeFormatMenu(btn, menu, storeKey, formats, onChange) {
   const m = {
     fmt: formats.includes(store.get(storeKey)) ? store.get(storeKey) : formats[0],
@@ -829,7 +844,7 @@ function makeFormatMenu(btn, menu, storeKey, formats, onChange) {
   return m;
 }
 const dlMenu = makeFormatMenu($('fmtBtn'), $('fmtMenu'), KEY_FMT, ['png', 'svg'], updateDlTip);
-const copyMenu = makeFormatMenu($('copyFmtBtn'), $('copyFmtMenu'), KEY_COPY_FMT, ['png', 'latex', 'mathml'], updateCopyTip);
+const copyMenu = makeFormatMenu($('copyFmtBtn'), $('copyFmtMenu'), KEY_COPY_FMT, ['png', 'latex', 'mathml', 'starmath', 'asciimath'], updateCopyTip);
 document.addEventListener('click', closeMenus);
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeMenus(); });
 
@@ -843,11 +858,9 @@ $('svgBtn').addEventListener('click', () => {
   }
 });
 
-/* clipboard (navigator.clipboard is missing in insecure contexts) */
 if (!navigator.clipboard?.writeText) $('copyGroup').style.display = 'none';
 copyBtn.addEventListener('click', async () => {
   try {
-    // For PNG the promise is handed over right away so the copy keeps the user gesture (needed by Safari).
     await (copyMenu.fmt === 'png'
       ? navigator.clipboard.write([new ClipboardItem({ 'image/png': toPNG() })])
       : navigator.clipboard.writeText(equationText(copyMenu.fmt)));
@@ -856,7 +869,6 @@ copyBtn.addEventListener('click', async () => {
   setTimeout(() => copyBtn.classList.remove('ok'), 1500);
 });
 
-/* input */
 input.addEventListener('input', () => {
   store.set(KEY_INPUT, input.value);
   render();
