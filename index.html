@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Easy Boolean Writer</title>
-<style type="text/css">
+<style>
 :root {
   color-scheme: light;
   --bg: #f3f5f8;
@@ -18,24 +18,7 @@
   --err: #c62828;
   --err-bg: rgba(198, 40, 40, 0.12);
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) {
-    color-scheme: dark;
-    --bg: #12151a;
-    --panel: #1b2027;
-    --fg: #e6e9ee;
-    --muted: #9aa4b2;
-    --border: #343c47;
-    --accent: #6ea0ff;
-    --btn: #262d37;
-    --btn-hover: #323b47;
-    --err: #ff8a80;
-    --err-bg: rgba(255, 138, 128, 0.16);
-  }
-}
-:root[data-theme="light"] {
-  color-scheme: light;
-}
+/* The theme is always set on <html> by the script (saved choice, else OS preference). */
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #12151a;
@@ -50,8 +33,9 @@
   --err-bg: rgba(255, 138, 128, 0.16);
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body {
+  margin: 0;
   background: var(--bg);
   color: var(--fg);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -103,6 +87,8 @@ label {
   display: block;
 }
 #expr:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+
+/* Buttons */
 button {
   font: inherit;
   color: var(--fg);
@@ -113,6 +99,9 @@ button {
 }
 button:hover { background: var(--btn-hover); }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button:disabled { opacity: 0.4; cursor: default; }
+button:disabled:hover { background: var(--btn); }
+button svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
 #clearBtn { padding: 0 16px; height: calc(1.1rem * 1.4 + 22px); flex: 0 0 auto; }
 .icon-btn {
   display: inline-flex;
@@ -122,9 +111,11 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   height: 36px;
   padding: 0;
 }
-.icon-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.icon-btn svg { width: 18px; height: 18px; stroke-width: 1.8; }
 .theme-toggle { position: fixed; top: 12px; right: 12px; z-index: 10; }
 .lang-toggle { right: 56px; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em; }
+
+/* Output panel */
 #outputPanel { min-height: 120px; padding: 24px 16px; display: flex; flex-direction: column; }
 #result {
   font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", "STIXGeneral", Cambria, "Times New Roman", serif;
@@ -134,42 +125,49 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   padding-top: 4px;
   overflow-wrap: anywhere;
   text-align: center;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
+#result .rblock { width: fit-content; max-width: 100%; margin: 0 auto; text-align: left; }
+#result .rblock > div { line-height: round(1.45em, 1px); }
+#result .blank { height: 0.6em; line-height: 0; }
+#result .demo { opacity: 0.3; user-select: none; -webkit-user-select: none; pointer-events: none; }
+
+/* Overlines. Whole-pixel metrics (round()) keep the bars evenly spaced:
+   fractional em values get snapped to device pixels differently from one bar to the next. */
 .ov {
   display: inline-block;
-  /* Whole-pixel metrics (plain px first as a fallback, round() where supported): fractional em values get
-     snapped to device pixels differently from one bar to the next, which made the gaps look uneven. */
-  border-top: 2px solid currentColor;
-  border-top-width: round(0.07em, 1px);
-  padding-top: 0;
-  margin: 0;
-  line-height: 1.1;
+  border-top: round(0.07em, 1px) solid currentColor;
   line-height: round(1.1em, 1px);
 }
-.ov.ov2 { padding-top: 6px; padding-top: round(0.2em, 1px); }
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-#result { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; overflow-x: auto; overflow-y: hidden; }
-@media (max-width: 520px) {
-  main { padding: 60px 12px 24px 12px; }
-  .panel { padding: 12px; }
-  #outputPanel { padding: 24px 12px; }
-  .row { gap: 6px; }
-  #expr { font-size: 16px; padding: 10px; }
-  #expr::placeholder { font-size: 0.85em; }
-  #clearBtn { padding: 0 12px; height: calc(16px * 1.4 + 22px); }
-  #result { font-size: 1.5rem; }
-  .icon-btn { width: 40px; height: 40px; }
-  .theme-toggle { top: 10px; right: 10px; }
-  .lang-toggle { right: 56px; }
-}
+.ov.ov2 { padding-top: round(0.2em, 1px); }
 .andgap { display: inline-block; width: 0.18em; }
 .par { display: inline-block; }
 .op { font-size: 0.8em; }
+sub { font-size: 0.65em; line-height: 0; }
+.err { background: var(--err-bg); border-bottom: 1px dotted var(--err); border-radius: 2px; }
+.err.ghost { color: var(--err); opacity: 0.7; }
+#note {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 6px;
+  text-align: center;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+/* Download / copy controls */
 .dl-btn { position: absolute; top: 8px; right: 8px; }
-.dl-btn:disabled { opacity: 0.4; cursor: default; }
-.dl-btn:disabled:hover { background: var(--btn); }
-.seg:disabled { opacity: 0.4; cursor: default; }
-.seg:disabled:hover { background: var(--btn); }
+.copy-btn { right: 72px; }
+.copy-btn .i-ok, .copy-btn.ok .i-copy { display: none; }
+.copy-btn.ok .i-ok { display: block; }
 .dl-group { display: flex; align-items: stretch; }
 .seg-main { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .seg-arrow {
@@ -181,7 +179,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   border-left: none;
   border-radius: 0 8px 8px 0;
 }
-.seg-arrow svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.seg-arrow svg { width: 12px; height: 12px; stroke-width: 2; }
 .fmt-menu {
   position: absolute;
   top: 100%;
@@ -196,49 +194,34 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 20;
 }
-.fmt-menu[hidden] { display: none; }
 .fmt-menu li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
 .fmt-menu li:hover { background: var(--btn-hover); }
 .fmt-menu li[aria-selected="true"]::after { content: "\2713"; color: var(--accent); }
-#result .demo { opacity: 0.3; user-select: none; -webkit-user-select: none; pointer-events: none; }
-.copy-btn { right: 72px; }
-@media (max-width: 520px) { .copy-btn { right: 76px; } }
-.copy-btn .i-ok { display: none; }
-.copy-btn.ok .i-ok { display: block; }
-.copy-btn.ok .i-copy { display: none; }
-.ov > .ov:first-child { margin-left: 0; }
-.ov > .ov:last-child { margin-right: 0; }
-.err {
-  background: var(--err-bg);
-  border-bottom: 1px dotted var(--err);
-  border-radius: 2px;
+
+@media (max-width: 520px) {
+  main { padding: 60px 12px 24px 12px; }
+  .panel { padding: 12px; }
+  #outputPanel { padding: 24px 12px; }
+  .row { gap: 6px; }
+  #expr { font-size: 16px; padding: 10px; }
+  #expr::placeholder { font-size: 0.85em; }
+  #clearBtn { padding: 0 12px; height: calc(16px * 1.4 + 22px); }
+  #result { font-size: 1.5rem; }
+  .icon-btn { width: 40px; height: 40px; }
+  .theme-toggle { top: 10px; right: 10px; }
+  .lang-toggle { right: 56px; }
+  .copy-btn { right: 76px; }
 }
-.err.ghost { color: var(--err); opacity: 0.7; }
-#result .rblock { width: fit-content; max-width: 100%; margin: 0 auto; text-align: left; }
-#result .rblock > div { line-height: 1.45; line-height: round(1.45em, 1px); }
-#result .blank { height: 0.6em; line-height: 0; }
-#note {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 6px;
-  text-align: center;
-  font-size: 0.78rem;
-  line-height: 1.2;
-  color: var(--muted);
-  pointer-events: none;
-}
-sub { font-size: 0.65em; line-height: 0; }
 </style>
 </head>
 <body>
 <button id="langToggle" class="icon-btn theme-toggle lang-toggle" type="button">EN</button>
-<button id="themeToggle" class="icon-btn theme-toggle" type="button" title="Toggle light / dark theme" aria-label="Toggle light / dark theme">
+<button id="themeToggle" class="icon-btn theme-toggle" type="button">
   <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 3 a9 9 0 0 1 0 18 z" fill="currentColor"></path></svg>
 </button>
 <main>
   <h1 id="title">Easy Boolean Writer</h1>
-  <div id="inputPanel" class="panel">
+  <div class="panel">
     <label for="expr">Expression</label>
     <div class="row">
       <textarea id="expr" rows="1" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="S = (/(/AB) + C0 ^ D_ef).F"></textarea>
@@ -247,11 +230,11 @@ sub { font-size: 0.65em; line-height: 0; }
   </div>
   <div id="outputPanel" class="panel">
     <div id="result" aria-live="polite"></div>
-    <div id="dlGroup" class="dl-btn dl-group">
-      <button id="svgBtn" class="icon-btn seg seg-main" type="button" title="Download as PNG" aria-label="Download as PNG" disabled>
+    <div class="dl-btn dl-group">
+      <button id="svgBtn" class="icon-btn seg-main" type="button" disabled>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"></path><path d="M7 11l5 5 5-5"></path><path d="M5 20h14"></path></svg>
       </button>
-      <button id="fmtBtn" class="seg seg-arrow" type="button" title="Download format" aria-label="Download format" aria-haspopup="listbox" aria-expanded="false" disabled>
+      <button id="fmtBtn" class="seg-arrow" type="button" aria-haspopup="listbox" aria-expanded="false" disabled>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
       </button>
       <ul id="fmtMenu" class="fmt-menu" role="listbox" hidden>
@@ -259,678 +242,559 @@ sub { font-size: 0.65em; line-height: 0; }
         <li role="option" data-fmt="svg" aria-selected="false">SVG</li>
       </ul>
     </div>
-    <button id="copyBtn" class="icon-btn dl-btn copy-btn" type="button" title="Copy to clipboard" aria-label="Copy to clipboard" disabled>
+    <button id="copyBtn" class="icon-btn dl-btn copy-btn" type="button" disabled>
       <svg class="i-copy" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg>
       <svg class="i-ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
     </button>
     <div id="note"></div>
   </div>
 </main>
-<script type="text/javascript">
-//<![CDATA[
-(function () {
-  'use strict';
-
-  var FONT = "'Cambria Math','STIX Two Math','Latin Modern Math','STIXGeneral','Cambria','Times New Roman',serif";
-  var I18N = {
-    en: {
-      pageTitle: 'Easy Boolean Writer',
-      label: 'Expression',
-      clear: 'Clear',
-      placeholder: 'S = (/(/AB) + C0 ^ D_ef).F',
-      themeTip: 'Toggle light / dark theme',
-      lineWord: 'Line',
-      svg: 'Download as PNG',
-      dlPng: 'Download as PNG',
-      dlSvg: 'Download as SVG',
-      fmtTip: 'Download format',
-      copy: 'Copy to clipboard',
-      langTip: 'Passer en français',
-      err: {
-        missing: function () { return 'Missing operand'; },
-        open: function () { return 'Unbalanced parenthesis: missing )'; },
-        close: function () { return 'Unbalanced parenthesis: unexpected )'; },
-        unknown: function (c) { return 'Unknown character: ' + c; }
-      }
-    },
-    fr: {
-      pageTitle: 'Écriture Booléenne Facile',
-      label: 'Expression',
-      clear: 'Effacer',
-      placeholder: 'S = (/(/AB) + C0 ^ D_ef).F',
-      themeTip: 'Basculer entre thème clair et sombre',
-      lineWord: 'Ligne',
-      svg: 'Télécharger en PNG',
-      dlPng: 'Télécharger en PNG',
-      dlSvg: 'Télécharger en SVG',
-      fmtTip: 'Format de téléchargement',
-      copy: 'Copier dans le presse-papiers',
-      langTip: 'Switch to English',
-      err: {
-        missing: function () { return 'Opérande manquant'; },
-        open: function () { return 'Parenthèse non fermée : ) manquante'; },
-        close: function () { return 'Parenthèe fermante : ) inattendue'; },
-        unknown: function (c) { return 'Caractère inconnu : ' + c; }
-      }
+<script>
+/* ---------------- i18n ---------------- */
+const I18N = {
+  en: {
+    pageTitle: 'Easy Boolean Writer',
+    clear: 'Clear',
+    themeTip: 'Toggle light / dark theme',
+    dlPng: 'Download as PNG',
+    dlSvg: 'Download as SVG',
+    fmtTip: 'Download format',
+    copy: 'Copy to clipboard as PNG',
+    langTip: 'Passer en français',
+    line: n => `Line ${n}: `,
+    // Messages are concatenated with the offending character (if any), hence the trailing space on "unknown".
+    err: {
+      missing: 'Missing operand',
+      open: 'Unbalanced parenthesis: missing )',
+      close: 'Unbalanced parenthesis: unexpected )',
+      unknown: 'Unknown character: '
     }
-  };
-
-  function esc(s) {
-    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  },
+  fr: {
+    pageTitle: 'Écriture Booléenne Facile',
+    clear: 'Effacer',
+    themeTip: 'Basculer entre thème clair et sombre',
+    dlPng: 'Télécharger en PNG',
+    dlSvg: 'Télécharger en SVG',
+    fmtTip: 'Format de téléchargement',
+    copy: 'Copier dans le presse-papiers en PNG',
+    langTip: 'Switch to English',
+    line: n => `Ligne ${n} : `,
+    err: {
+      missing: 'Opérande manquant',
+      open: 'Parenthèse non fermée : ) manquante',
+      close: 'Parenthèse fermante : ) inattendue',
+      unknown: 'Caractère inconnu : '
+    }
   }
+};
 
-  /* ---------------- Tokenizer ---------------- */
-  function tokenize(src) {
-    var toks = [], i = 0, n = src.length, c, m;
-    while (i < n) {
-      c = src.charAt(i);
-      if (/\s/.test(c)) { i++; continue; }
-      if (/[A-Za-z]/.test(c)) {
-        var t = { type: 'var', base: c, sub: '' };
-        i++;
-        if (src.charAt(i) === '_') {
-          m = /^[A-Za-z0-9]+/.exec(src.slice(i + 1));
-          if (m) {
-            t.sub = m[0];
-            i += 1 + m[0].length;
-          } else {
-            toks.push(t);
-            toks.push({ type: 'bad', text: '_' });
-            i++;
-            continue;
-          }
+const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const esc = s => String(s).replace(/[&<>"']/g, c => ESC[c]);
+
+/* ---------------- Tokenizer ---------------- */
+function tokenize(src) {
+  const toks = [];
+  let i = 0, m;
+  while (i < src.length) {
+    const c = src[i];
+    if (/\s/.test(c)) { i++; continue; }
+    if (/[A-Za-z]/.test(c)) {
+      // Variable with an optional subscript: A0, A12, A_ef
+      const t = { type: 'var', base: c, sub: '' };
+      i++;
+      if (src[i] === '_') {
+        m = /^[A-Za-z0-9]+/.exec(src.slice(i + 1));
+        if (m) {
+          t.sub = m[0];
+          i += 1 + m[0].length;
         } else {
-          m = /^[0-9]+/.exec(src.slice(i));
-          if (m) { t.sub = m[0]; i += m[0].length; }
+          toks.push(t, { type: 'bad', text: '_' });
+          i++;
+          continue;
         }
-        toks.push(t);
-        continue;
+      } else if ((m = /^[0-9]+/.exec(src.slice(i)))) {
+        t.sub = m[0];
+        i += m[0].length;
       }
-      if (c === '0' || c === '1') { toks.push({ type: 'const', value: c }); i++; continue; }
-      if ('+.^()='.indexOf(c) >= 0) { toks.push({ type: c }); i++; continue; }
-      if (c === '/' || c === '!') { toks.push({ type: 'not' }); i++; continue; }
-      var cp = String.fromCodePoint(src.codePointAt(i));
+      toks.push(t);
+    } else if (c === '0' || c === '1') {
+      toks.push({ type: 'const', value: c });
+      i++;
+    } else if ('+.^()='.includes(c)) {
+      toks.push({ type: c });
+      i++;
+    } else if (c === '/' || c === '!') {
+      toks.push({ type: 'not' });
+      i++;
+    } else {
+      const cp = String.fromCodePoint(src.codePointAt(i));
       toks.push({ type: 'bad', text: cp });
       i += cp.length;
     }
-    return toks;
   }
+  return toks;
+}
 
-  /* ---------------- Parser (recursive descent) ---------------- */
-  function parse(src) {
-    var toks = tokenize(src), pos = 0, errors = [];
+/* ---------------- Parser (recursive descent) ---------------- */
+// Precedence, lowest to highest: = , + , ^ , AND (explicit "." or implicit juxtaposition) , NOT
+const UNARY_START = new Set(['var', 'const', 'not', '(', 'bad']);
+const OPERATORS = new Set(['+', '.', '^', '=', ')']);
 
-    function peek() { return toks[pos]; }
-    function addError(key, c) {
-      var i;
-      for (i = 0; i < errors.length; i++) { if (errors[i].key === key && errors[i].c === c) { return; } }
-      errors.push({ key: key, c: c });
-    }
-    function placeholder(msg) {
-      addError(msg);
-      return { type: 'err', text: '□', ghost: true };
-    }
-    function startsUnary(t) {
-      return !!t && (t.type === 'var' || t.type === 'const' || t.type === 'not' || t.type === '(' || t.type === 'bad');
-    }
+function parse(src) {
+  const toks = tokenize(src), errors = [];
+  let pos = 0;
 
-    function parseEq() {
-      var items = [parseOr()];
-      while (peek() && peek().type === '=') { pos++; items.push(parseOr()); }
-      return items.length === 1 ? items[0] : { type: 'eq', items: items };
-    }
-    function parseOr() {
-      var items = [parseXor()];
-      while (peek() && peek().type === '+') { pos++; items.push(parseXor()); }
-      return items.length === 1 ? items[0] : { type: 'or', items: items };
-    }
-    function parseXor() {
-      var items = [parseAnd()];
-      while (peek() && peek().type === '^') { pos++; items.push(parseAnd()); }
-      return items.length === 1 ? items[0] : { type: 'xor', items: items };
-    }
-    function parseAnd() {
-      var items = [parseUnary()], seps = [];
-      for (;;) {
-        var t = peek();
-        if (t && t.type === '.') {
-          pos++; seps.push(true); items.push(parseUnary());
-        } else if (startsUnary(t)) {
-          seps.push(false); items.push(parseUnary());
-        } else {
-          break;
-        }
+  const peek = () => toks[pos];
+  const addError = (key, c) => {
+    if (!errors.some(e => e.key === key && e.c === c)) errors.push({ key, c });
+  };
+  const placeholder = () => {
+    addError('missing');
+    return { type: 'err', text: '□', ghost: true };
+  };
+  // Builds a parser for `a SEP a SEP a ...`
+  const chain = (type, sep, next) => () => {
+    const items = [next()];
+    while (peek()?.type === sep) { pos++; items.push(next()); }
+    return items.length === 1 ? items[0] : { type, items };
+  };
+
+  function parseAnd() {
+    const items = [parseUnary()], seps = [];
+    for (;;) {
+      const t = peek();
+      if (t?.type === '.') {
+        pos++; seps.push(true); items.push(parseUnary());
+      } else if (t && UNARY_START.has(t.type)) {
+        seps.push(false); items.push(parseUnary());
+      } else {
+        break;
       }
-      return items.length === 1 ? items[0] : { type: 'and', items: items, seps: seps };
     }
-    function parseUnary() {
-      var t = peek();
-      if (!t || t.type === '+' || t.type === '.' || t.type === '^' || t.type === '=' || t.type === ')') {
-        return placeholder('missing');
-      }
+    return items.length === 1 ? items[0] : { type: 'and', items, seps };
+  }
+  function parseUnary() {
+    const t = peek();
+    if (!t || OPERATORS.has(t.type)) return placeholder();
+    pos++;
+    if (t.type === 'not') return { type: 'not', x: parseUnary() };
+    if (t.type === 'var') return { type: 'var', base: t.base, sub: t.sub };
+    if (t.type === 'const') return { type: 'const', value: t.value };
+    if (t.type === '(') {
+      const x = parseEq();
+      const open = peek()?.type !== ')';
+      if (open) addError('open'); else pos++;
+      return { type: 'paren', x, open };
+    }
+    addError('unknown', t.text);
+    return { type: 'err', text: t.text, ghost: false };
+  }
+  const parseXor = chain('xor', '^', parseAnd);
+  const parseOr = chain('or', '+', parseXor);
+  const parseEq = chain('eq', '=', parseOr);
+
+  const nodes = [];
+  while (pos < toks.length) {
+    if (peek().type === ')') {
       pos++;
-      if (t.type === 'not') { return { type: 'not', x: parseUnary() }; }
-      if (t.type === 'var') { return { type: 'var', base: t.base, sub: t.sub }; }
-      if (t.type === 'const') { return { type: 'const', value: t.value }; }
-      if (t.type === '(') {
-        var x = parseEq(), open = false;
-        if (peek() && peek().type === ')') { pos++; } else { open = true; addError('open'); }
-        return { type: 'paren', x: x, open: open };
-      }
-      addError('unknown', t.text);
-      return { type: 'err', text: t.text, ghost: false };
-    }
-
-    var nodes = [];
-    while (pos < toks.length) {
-      if (peek().type === ')') {
-        pos++;
-        addError('close');
-        nodes.push({ type: 'err', text: ')', ghost: false });
-      } else {
-        nodes.push(parseEq());
-      }
-    }
-    return { nodes: nodes, errors: errors };
-  }
-
-  /* ---------------- Rendering to segments ---------------- */
-  function isAtom(n) { return n.type === 'var' || n.type === 'const'; }
-  function txt(s) { return { t: 'text', s: s }; }
-
-  function renderNode(n) {
-    var out = [], i;
-    switch (n.type) {
-      case 'var':
-        return [{ t: 'var', base: n.base, sub: n.sub, n: 0 }];
-      case 'const':
-        return [{ t: 'var', base: n.value, sub: '', n: 0 }];
-      case 'err':
-        return [{ t: 'err', s: n.text, ghost: n.ghost }];
-      case 'paren':
-        var inner = renderNode(n.x), h = 0, k, closeSeg;
-        for (k = 0; k < inner.length; k++) { h = Math.max(h, segHeight(inner[k])); }
-        closeSeg = n.open ? { t: 'err', s: ')', ghost: true } : { t: 'par', s: ')' };
-        if (h > 0) {
-          /* Parentheses around overlines are stretched later (fixParens) so their top reaches the bar. */
-          out.push({ t: 'pgo' }, { t: 'par', s: '(' });
-          out = out.concat(inner);
-          out.push(closeSeg, { t: 'pgc' });
-        } else {
-          out.push(txt('('));
-          out = out.concat(inner);
-          out.push(n.open ? closeSeg : txt(')'));
-        }
-        return out;
-      case 'not':
-        return renderNot(n);
-      case 'and':
-        for (i = 0; i < n.items.length; i++) {
-          if (i > 0) {
-            var a = n.items[i - 1], b = n.items[i];
-            if (n.seps[i - 1] || (a.type === 'const' && b.type === 'const')) {
-              out.push({ t: 'op', s: ' · ' });
-            } else {
-              /* Implied AND: one constant gap, whether or not the neighbours carry an overline. */
-              out.push({ t: 'gap' });
-            }
-          }
-          out = out.concat(renderNode(n.items[i]));
-        }
-        return out;
-      case 'xor':
-        return joinItems(n.items, ' ⊕ ');
-      case 'or':
-        return joinItems(n.items, ' + ');
-      case 'eq':
-        return joinItems(n.items, ' = ');
-    }
-    return out;
-  }
-  function joinItems(items, op) {
-    var out = [], i;
-    for (i = 0; i < items.length; i++) {
-      if (i > 0) { out.push(op === ' = ' ? txt(op) : { t: 'op', s: op }); }
-      out = out.concat(renderNode(items[i]));
-    }
-    return out;
-  }
-  function renderNot(n) {
-    var x = n.x, content, ghost = null;
-    if (isAtom(x)) {
-      var s = renderNode(x);
-      s[0].n = 1;
-      return s;
-    }
-    if (x.type === 'paren') {
-      content = renderNode(x.x);
-      if (x.open) { ghost = { t: 'err', s: ')', ghost: true }; }
-    } else if (x.type === 'not') {
-      content = renderNode(x);
+      addError('close');
+      nodes.push({ type: 'err', text: ')', ghost: false });
     } else {
-      content = renderNode(x);
+      nodes.push(parseEq());
     }
-    if (content.length === 1 && content[0].t === 'var' && content[0].n >= 1) {
-      content[0].n += 1;
-      if (ghost) { content.push(ghost); }
-      return content;
-    }
-    var res = [{ t: 'bar', kids: content }];
-    if (ghost) { res.push(ghost); }
-    return res;
   }
-  function buildSegs(src) {
-    var p = parse(src), segs = [], i;
-    for (i = 0; i < p.nodes.length; i++) { segs = segs.concat(renderNode(p.nodes[i])); }
-    return { segs: segs, errors: p.errors };
-  }
+  return { nodes, errors };
+}
 
-  /* ---------------- Segments to HTML ---------------- */
-  function segsToHTML(segs) {
-    var out = '', i, g, u;
-    for (i = 0; i < segs.length; i++) {
-      g = segs[i];
-      if (g.t === 'text') {
-        out += esc(g.s);
-      } else if (g.t === 'gap') {
-        out += '<span class="andgap"></span>';
-      } else if (g.t === 'pgo') {
-        out += '<span class="pg">';
-      } else if (g.t === 'pgc') {
-        out += '</span>';
-      } else if (g.t === 'par') {
-        out += '<span class="par">' + esc(g.s) + '</span>';
-      } else if (g.t === 'op') {
-        out += ' <span class="op">' + esc(g.s.replace(/^\s+|\s+$/g, '')) + '</span> ';
-      } else if (g.t === 'err') {
-        out += '<span class="err' + (g.ghost ? ' ghost' : '') + '">' + esc(g.s) + '</span>';
-      } else if (g.t === 'var') {
-        var vh = esc(g.base), lv;
-        if (g.sub) {
-          vh += '<sub>' + esc(g.sub) + '</sub>';
-        }
-        for (lv = 1; lv <= g.n; lv++) { vh = ovOpen(lv) + vh + '</span>'; }
-        out += vh;
-      } else if (g.t === 'bar') {
-        out += ovOpen(segHeight(g)) + segsToHTML(g.kids) + '</span>';
-      }
-    }
-    return out;
-  }
+/* ---------------- Rendering to segments ---------------- */
+const isAtom = n => n.type === 'var' || n.type === 'const';
+const txt = s => ({ t: 'text', s });
 
-  /* ---------------- Overline levels ---------------- */
-  /* Height of a segment in overline levels: a bar sits one level above its tallest child,
-     so a bar over elements without overlines shares the level of a single-variable overline. */
-  function segHeight(g) {
-    if (g.t === 'var') { return g.n || 0; }
-    if (g.t === 'bar') {
-      var m = 0, i;
-      for (i = 0; i < g.kids.length; i++) { m = Math.max(m, segHeight(g.kids[i])); }
-      return m + 1;
-    }
-    return 0;
-  }
-  function ovOpen(level) {
-    /* Level 1 hugs the text; every outer level adds the same fixed gap above the bar it contains,
-       so the spacing between stacked overlines is identical whatever the depth. */
-    return '<span class="ov' + (level > 1 ? ' ov2' : '') + '">';
-  }
+// Height of a segment in overline levels: a bar sits one level above its tallest child,
+// so a bar over elements without overlines shares the level of a single-variable overline.
+function segHeight(g) {
+  if (g.t === 'var') return g.n || 0;
+  if (g.t === 'bar') return Math.max(0, ...g.kids.map(segHeight)) + 1;
+  return 0;
+}
 
-  /* ---------------- DOM wiring ---------------- */
-  function initDOM() {
-    var KEY_INPUT = 'boolnotation.input', KEY_THEME = 'boolnotation.theme';
-    var root = document.documentElement;
-    var input = document.getElementById('expr');
-    var result = document.getElementById('result');
-    var note = document.getElementById('note');
-    var currentSegs = [];
-
-    var store = {
-      get: function (k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } },
-      set: function (k, v) { try { window.localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
-      remove: function (k) { try { window.localStorage.removeItem(k); } catch (e) { /* ignore */ } }
-    };
-
-    var lang = 'en';
-    var lastErrors = [];
-    var lineCount = 1;
-    var KEY_LANG = 'boolnotation.lang', KEY_FMT = 'boolnotation.fmt';
-    var fmt = store.get(KEY_FMT) === 'svg' ? 'svg' : 'png';
-
-    function updateDlTip() {
-      var tip = I18N[lang][fmt === 'svg' ? 'dlSvg' : 'dlPng'];
-      var sb = document.getElementById('svgBtn');
-      sb.setAttribute('title', tip);
-      sb.setAttribute('aria-label', tip);
+function renderNode(n) {
+  switch (n.type) {
+    case 'var': return [{ t: 'var', base: n.base, sub: n.sub, n: 0 }];
+    case 'const': return [{ t: 'var', base: n.value, sub: '', n: 0 }];
+    case 'err': return [{ t: 'err', s: n.text, ghost: n.ghost }];
+    case 'not': return renderNot(n);
+    case 'paren': {
+      const inner = renderNode(n.x);
+      const close = n.open ? { t: 'err', s: ')', ghost: true } : { t: 'par', s: ')' };
+      if (Math.max(0, ...inner.map(segHeight)) > 0) {
+        // Parentheses around overlines are stretched later (fixParens) so their top reaches the bar.
+        return [{ t: 'pgo' }, { t: 'par', s: '(' }, ...inner, close, { t: 'pgc' }];
+      }
+      return [txt('('), ...inner, n.open ? close : txt(')')];
     }
-
-    function showNote() {
-      if (!lastErrors.length) { note.textContent = ''; return; }
-      var e = lastErrors[0];
-      var pre = lineCount > 1 ? I18N[lang].lineWord + ' ' + e.line + (lang === 'fr' ? ' : ' : ': ') : '';
-      note.textContent = '⚠ ' + pre + I18N[lang].err[e.key](e.c);
-    }
-    function applyLang() {
-      var d = I18N[lang];
-      root.setAttribute('lang', lang);
-      document.title = d.pageTitle;
-      document.getElementById('title').textContent = d.pageTitle;
-      document.querySelector('label[for="expr"]').textContent = d.label;
-      document.getElementById('clearBtn').textContent = d.clear;
-      updateDlTip();
-      var fb = document.getElementById('fmtBtn');
-      fb.setAttribute('title', d.fmtTip);
-      fb.setAttribute('aria-label', d.fmtTip);
-      var cb = document.getElementById('copyBtn');
-      cb.setAttribute('title', d.copy);
-      cb.setAttribute('aria-label', d.copy);
-      input.setAttribute('placeholder', d.placeholder);
-      var tt = document.getElementById('themeToggle');
-      tt.setAttribute('title', d.themeTip);
-      tt.setAttribute('aria-label', d.themeTip);
-      var lt = document.getElementById('langToggle');
-      lt.textContent = lang.toUpperCase();
-      lt.setAttribute('title', d.langTip);
-      lt.setAttribute('aria-label', d.langTip);
-      showNote();
-    }
-    function detectLang() {
-      var l = (navigator.languages && navigator.languages[0]) || navigator.language || 'en';
-      return /^fr/i.test(l) ? 'fr' : 'en';
-    }
-    var savedLang = store.get(KEY_LANG);
-    lang = (savedLang === 'fr' || savedLang === 'en') ? savedLang : detectLang();
-    document.getElementById('langToggle').addEventListener('click', function () {
-      lang = lang === 'fr' ? 'en' : 'fr';
-      store.set(KEY_LANG, lang);
-      applyLang();
-    });
-
-    function autosize() {
-      input.style.height = 'auto';
-      var cs = window.getComputedStyle(input);
-      var extra = (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
-      input.style.height = (input.scrollHeight + extra) + 'px';
-    }
-    function render() {
-      var v = input.value;
-      autosize();
-      var lines = v.split(/\r\n|\r|\n/), html = '', i, r, errs = [], any = false;
-      lineCount = lines.length;
-      for (i = 0; i < lines.length; i++) {
-        if (!lines[i].replace(/\s+/g, '')) {
-          html += '<div class="blank"></div>';
-          continue;
-        }
-        any = true;
-        r = buildSegs(lines[i]);
-        html += '<div>' + segsToHTML(r.segs) + '</div>';
-        if (r.errors.length && !errs.length) {
-          errs = [{ key: r.errors[0].key, c: r.errors[0].c, line: i + 1 }];
-        }
-      }
-      if (any) {
-        result.innerHTML = '<div class="rblock">' + html + '</div>';
-      } else {
-        /* Empty input: show the placeholder example as a greyed, non-interactive preview. */
-        result.innerHTML = '<div class="rblock demo"><div>' + segsToHTML(buildSegs(I18N[lang].placeholder).segs) + '</div></div>';
-      }
-      document.getElementById('svgBtn').disabled = !any;
-      document.getElementById('fmtBtn').disabled = !any;
-      if (!any) {
-        document.getElementById('fmtMenu').setAttribute('hidden', '');
-        document.getElementById('fmtBtn').setAttribute('aria-expanded', 'false');
-      }
-      document.getElementById('copyBtn').disabled = !any;
-      lastErrors = errs;
-      showNote();
-      fixParens();
-    }
-
-    /* Stretch the parentheses of a group upwards so their top sits at the level of its tallest overline. */
-    var measureCtx = document.createElement('canvas').getContext('2d');
-    function fixParens() {
-      var pars = result.querySelectorAll('.par'), groups = result.querySelectorAll('.pg'), i, j;
-      for (i = 0; i < pars.length; i++) {
-        pars[i].style.transform = '';
-        pars[i].removeAttribute('data-sy');
-        pars[i].removeAttribute('data-od');
-      }
-      if (!measureCtx) { return; }
-      for (i = 0; i < groups.length; i++) {
-        var ovs = groups[i].querySelectorAll('.ov'), top = Infinity, k;
-        for (k = 0; k < ovs.length; k++) { top = Math.min(top, ovs[k].getBoundingClientRect().top); }
-        if (top === Infinity) { continue; }
-        for (j = 0; j < groups[i].children.length; j++) {
-          var p = groups[i].children[j];
-          if (!p.classList.contains('par')) { continue; }
-          var cs = window.getComputedStyle(p);
-          measureCtx.font = cs.fontSize + ' ' + cs.fontFamily;
-          var m = measureCtx.measureText(p.textContent);
-          var asc = m.actualBoundingBoxAscent, desc = m.actualBoundingBoxDescent;
-          if (!(asc + desc > 0)) { continue; }
-          var probe = document.createElement('span');
-          probe.style.cssText = 'display:inline-block;width:0;height:0';
-          p.insertBefore(probe, p.firstChild);
-          var base = probe.getBoundingClientRect().bottom;
-          p.removeChild(probe);
-          var sy = (base + desc - top) / (asc + desc);
-          if (!(sy > 1.02)) { continue; }
-          var oy = base + desc - p.getBoundingClientRect().top;
-          p.style.transformOrigin = '0 ' + oy.toFixed(2) + 'px';
-          p.style.transform = 'scaleY(' + sy.toFixed(4) + ')';
-          p.setAttribute('data-sy', sy.toFixed(4));
-          p.setAttribute('data-od', desc.toFixed(2));
-        }
-      }
-    }
-    window.addEventListener('resize', fixParens);
-    if (document.fonts && document.fonts.ready) { document.fonts.ready.then(fixParens); }
-
-    /* SVG export: reads the laid-out result from the DOM so the SVG matches what is on screen */
-    function buildSVG() {
-      var block = result.querySelector('.rblock');
-      if (!block || block.classList.contains('demo')) { return null; }
-      var lines = [], texts = [], nodes = [], i, r, cs, w, n;
-      var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, pad = 10;
-      function ext(l, t, rr, b) {
-        if (l < minX) { minX = l; } if (t < minY) { minY = t; }
-        if (rr > maxX) { maxX = rr; } if (b > maxY) { maxY = b; }
-      }
-      var ovs = block.querySelectorAll('.ov');
-      for (i = 0; i < ovs.length; i++) {
-        r = ovs[i].getBoundingClientRect();
-        cs = window.getComputedStyle(ovs[i]);
-        w = parseFloat(cs.borderTopWidth) || 1;
-        lines.push({ x1: r.left, x2: r.right, y: r.top + w / 2, w: w });
-        ext(r.left, r.top, r.right, r.bottom);
-      }
-      var walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, null, false);
-      while ((n = walker.nextNode())) { nodes.push(n); }
-      /* Measure stretched parentheses untransformed; the stretch is re-applied as an SVG transform. */
-      var pars = block.querySelectorAll('.par'), savedTf = [];
-      for (i = 0; i < pars.length; i++) { savedTf.push(pars[i].style.transform); pars[i].style.transform = 'none'; }
-      for (i = 0; i < nodes.length; i++) {
-        n = nodes[i];
-        var s = n.nodeValue;
-        if (!/\S/.test(s)) { continue; }
-        var a = s.search(/\S/), b = s.replace(/\s+$/, '').length;
-        var range = document.createRange();
-        range.setStart(n, a);
-        range.setEnd(n, b);
-        r = range.getBoundingClientRect();
-        var parent = n.parentNode;
-        var probe = document.createElement('span');
-        probe.style.cssText = 'display:inline-block;width:0;height:0';
-        parent.insertBefore(probe, n);
-        var base = probe.getBoundingClientRect().bottom;
-        parent.removeChild(probe);
-        cs = window.getComputedStyle(parent);
-        texts.push({
-          x: r.left, y: base, w: r.width, size: cs.fontSize, s: s.slice(a, b),
-          sy: parseFloat(parent.getAttribute && parent.getAttribute('data-sy')) || 1,
-          od: parseFloat(parent.getAttribute && parent.getAttribute('data-od')) || 0
-        });
-        ext(r.left, r.top, r.right, r.bottom);
-      }
-      for (i = 0; i < pars.length; i++) { pars[i].style.transform = savedTf[i]; }
-      if (minX === Infinity) { return null; }
-      var W = maxX - minX + 2 * pad, H = maxY - minY + 2 * pad;
-      var ox = pad - minX, oy = pad - minY;
-      function f(v) { return (Math.round(v * 100) / 100).toString(); }
-      var svg = '<?xml version="1.0" encoding="UTF-8"?>\n' +
-        '<svg xmlns="http://www.w3.org/2000/svg" width="' + f(W) + '" height="' + f(H) +
-        '" viewBox="0 0 ' + f(W) + ' ' + f(H) + '">\n' +
-        '<g fill="#000" stroke="none" font-family="' + esc(FONT) + '">\n';
-      for (i = 0; i < texts.length; i++) {
-        var t = texts[i], tf = '';
-        if (t.sy !== 1) {
-          var y0 = t.y + oy + t.od;
-          tf = ' transform="translate(0 ' + f(y0) + ') scale(1 ' + t.sy + ') translate(0 ' + f(-y0) + ')"';
-        }
-        svg += '<text x="' + f(t.x + ox) + '" y="' + f(t.y + oy) + '" font-size="' + parseFloat(t.size) +
-          '" textLength="' + f(t.w) + '" lengthAdjust="spacing"' + tf + '>' + esc(t.s) + '</text>\n';
-      }
-      svg += '</g>\n<g stroke="#000" fill="none">\n';
-      for (i = 0; i < lines.length; i++) {
-        var L = lines[i];
-        svg += '<line x1="' + f(L.x1 + ox) + '" y1="' + f(L.y + oy) + '" x2="' + f(L.x2 + ox) +
-          '" y2="' + f(L.y + oy) + '" stroke-width="' + f(L.w) + '"/>\n';
-      }
-      svg += '</g>\n</svg>\n';
-      return svg;
-    }
-    function toPNG() {
-      return new Promise(function (resolve, reject) {
-        var svg = buildSVG();
-        if (!svg) { reject(new Error('empty')); return; }
-        var svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
-        var img = new Image();
-        img.onload = function () {
-          var scale = 3;
-          var canvas = document.createElement('canvas');
-          canvas.width = Math.ceil(img.width * scale);
-          canvas.height = Math.ceil(img.height * scale);
-          var ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          URL.revokeObjectURL(svgUrl);
-          canvas.toBlob(function (blob) {
-            if (blob) { resolve(blob); } else { reject(new Error('png')); }
-          }, 'image/png');
-        };
-        img.onerror = function () { URL.revokeObjectURL(svgUrl); reject(new Error('img')); };
-        img.src = svgUrl;
+    case 'and':
+      return n.items.flatMap((item, i) => {
+        if (i === 0) return renderNode(item);
+        const dot = n.seps[i - 1] || (n.items[i - 1].type === 'const' && item.type === 'const');
+        // Implied AND: one constant gap, whether or not the neighbours carry an overline.
+        return [dot ? { t: 'op', s: ' · ' } : { t: 'gap' }, ...renderNode(item)];
       });
-    }
-    function saveBlob(blob, name) {
-      var url = URL.createObjectURL(blob);
-      var link = document.createElement('a');
-      link.href = url;
-      link.download = name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-    }
-    document.getElementById('svgBtn').addEventListener('click', function () {
-      if (fmt === 'svg') {
-        var svg = buildSVG();
-        if (svg) { saveBlob(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }), 'boolean-expression.svg'); }
-        return;
+    case 'xor': return joinItems(n.items, { t: 'op', s: ' ⊕ ' });
+    case 'or': return joinItems(n.items, { t: 'op', s: ' + ' });
+    case 'eq': return joinItems(n.items, txt(' = '));
+  }
+}
+const joinItems = (items, sep) => items.flatMap((item, i) => (i ? [sep, ...renderNode(item)] : renderNode(item)));
+
+function renderNot({ x }) {
+  if (isAtom(x)) {
+    const segs = renderNode(x);
+    segs[0].n = 1;
+    return segs;
+  }
+  const content = renderNode(x.type === 'paren' ? x.x : x);
+  const ghost = x.type === 'paren' && x.open ? [{ t: 'err', s: ')', ghost: true }] : [];
+  // A negated single variable just gains one more overline level.
+  if (content.length === 1 && content[0].t === 'var' && content[0].n >= 1) {
+    content[0].n++;
+    return [...content, ...ghost];
+  }
+  return [{ t: 'bar', kids: content }, ...ghost];
+}
+
+function buildSegs(src) {
+  const { nodes, errors } = parse(src);
+  return { segs: nodes.flatMap(renderNode), errors };
+}
+
+/* ---------------- Segments to HTML ---------------- */
+// Level 1 hugs the text; every outer level adds the same fixed gap above the bar it contains,
+// so the spacing between stacked overlines is identical whatever the depth.
+const overline = (level, html) => `<span class="ov${level > 1 ? ' ov2' : ''}">${html}</span>`;
+
+function segsToHTML(segs) {
+  return segs.map(g => {
+    switch (g.t) {
+      case 'text': return esc(g.s);
+      case 'gap': return '<span class="andgap"></span>';
+      case 'pgo': return '<span class="pg">';
+      case 'pgc': return '</span>';
+      case 'par': return `<span class="par">${esc(g.s)}</span>`;
+      case 'op': return ` <span class="op">${esc(g.s.trim())}</span> `;
+      case 'err': return `<span class="err${g.ghost ? ' ghost' : ''}">${esc(g.s)}</span>`;
+      case 'bar': return overline(segHeight(g), segsToHTML(g.kids));
+      case 'var': {
+        let html = esc(g.base) + (g.sub ? `<sub>${esc(g.sub)}</sub>` : '');
+        for (let level = 1; level <= g.n; level++) html = overline(level, html);
+        return html;
       }
-      toPNG().then(function (blob) {
-        saveBlob(blob, 'boolean-expression.png');
-      }, function () { /* ignore */ });
-    });
-
-    /* download format dropdown (affects the download button only, not the clipboard copy) */
-    var fmtBtn = document.getElementById('fmtBtn');
-    var fmtMenu = document.getElementById('fmtMenu');
-    function setMenu(open) {
-      if (open) { fmtMenu.removeAttribute('hidden'); } else { fmtMenu.setAttribute('hidden', ''); }
-      fmtBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
     }
-    function markFmt() {
-      var items = fmtMenu.querySelectorAll('li'), k;
-      for (k = 0; k < items.length; k++) {
-        items[k].setAttribute('aria-selected', items[k].getAttribute('data-fmt') === fmt ? 'true' : 'false');
-      }
-      updateDlTip();
-    }
-    fmtBtn.addEventListener('click', function (ev) {
-      ev.stopPropagation();
-      setMenu(fmtMenu.hasAttribute('hidden'));
-    });
-    fmtMenu.addEventListener('click', function (ev) {
-      var li = ev.target;
-      while (li && li !== fmtMenu && li.nodeName !== 'LI') { li = li.parentNode; }
-      if (!li || li === fmtMenu) { return; }
-      fmt = li.getAttribute('data-fmt') === 'svg' ? 'svg' : 'png';
-      store.set(KEY_FMT, fmt);
-      markFmt();
-      setMenu(false);
-    });
-    document.addEventListener('click', function () { setMenu(false); });
-    document.addEventListener('keydown', function (ev) {
-      if (ev.key === 'Escape') { setMenu(false); }
-    });
-    markFmt();
-    var copyBtn = document.getElementById('copyBtn');
-    if (!(navigator.clipboard && window.ClipboardItem)) {
-      copyBtn.style.display = 'none';
-    }
-    copyBtn.addEventListener('click', function () {
-      try {
-        /* The promise is handed over right away so the copy keeps the user gesture (needed by Safari). */
-        navigator.clipboard.write([new window.ClipboardItem({ 'image/png': toPNG() })]).then(function () {
-          copyBtn.classList.add('ok');
-          setTimeout(function () { copyBtn.classList.remove('ok'); }, 1500);
-        }, function () { /* ignore */ });
-      } catch (e) { /* ignore */ }
-    });
+  }).join('');
+}
 
-    /* theme */
-    function effectiveTheme() {
-      var a = root.getAttribute('data-theme');
-      if (a === 'dark' || a === 'light') { return a; }
-      return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+/* ---------------- DOM wiring ---------------- */
+const KEY_INPUT = 'boolnotation.input', KEY_THEME = 'boolnotation.theme';
+const KEY_LANG = 'boolnotation.lang', KEY_FMT = 'boolnotation.fmt';
+
+const $ = id => document.getElementById(id);
+const root = document.documentElement;
+const input = $('expr'), result = $('result'), note = $('note');
+const fmtBtn = $('fmtBtn'), fmtMenu = $('fmtMenu'), copyBtn = $('copyBtn');
+
+// localStorage may be unavailable (private mode, blocked cookies): fail silently.
+const store = {
+  get: k => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* ignore */ } },
+  remove: k => { try { localStorage.removeItem(k); } catch { /* ignore */ } }
+};
+
+/* theme: a saved choice wins, otherwise follow the OS preference */
+const osTheme = matchMedia('(prefers-color-scheme: dark)');
+let userTheme = store.get(KEY_THEME);
+if (userTheme !== 'dark' && userTheme !== 'light') userTheme = null;
+const applyTheme = () => { root.dataset.theme = userTheme ?? (osTheme.matches ? 'dark' : 'light'); };
+applyTheme();
+osTheme.addEventListener('change', applyTheme);
+$('themeToggle').addEventListener('click', () => {
+  userTheme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+  store.set(KEY_THEME, userTheme);
+  applyTheme();
+});
+
+/* language and format */
+const savedLang = store.get(KEY_LANG);
+let lang = savedLang in I18N ? savedLang : /^fr/i.test(navigator.language) ? 'fr' : 'en';
+let fmt = store.get(KEY_FMT) === 'svg' ? 'svg' : 'png';
+let lastError = null, lineCount = 1;
+
+const setTip = (id, text) => { const el = $(id); el.title = text; el.ariaLabel = text; };
+const updateDlTip = () => setTip('svgBtn', I18N[lang][fmt === 'svg' ? 'dlSvg' : 'dlPng']);
+
+function showNote() {
+  const d = I18N[lang];
+  note.textContent = lastError
+    ? `⚠ ${lineCount > 1 ? d.line(lastError.line) : ''}${d.err[lastError.key]}${lastError.c ?? ''}`
+    : '';
+}
+function applyLang() {
+  const d = I18N[lang];
+  root.lang = lang;
+  document.title = $('title').textContent = d.pageTitle;
+  $('clearBtn').textContent = d.clear;
+  $('langToggle').textContent = lang.toUpperCase();
+  setTip('themeToggle', d.themeTip);
+  setTip('fmtBtn', d.fmtTip);
+  setTip('copyBtn', d.copy);
+  setTip('langToggle', d.langTip);
+  updateDlTip();
+  showNote();
+}
+$('langToggle').addEventListener('click', () => {
+  lang = lang === 'fr' ? 'en' : 'fr';
+  store.set(KEY_LANG, lang);
+  applyLang();
+});
+
+/* layout helpers */
+function autosize() {
+  input.style.height = 'auto';
+  const cs = getComputedStyle(input);
+  input.style.height = `${input.scrollHeight + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth)}px`;
+}
+
+// Baseline y-position (viewport coordinates) of a node, measured with a zero-size inline-block placed before it.
+function baselineY(node) {
+  const probe = document.createElement('span');
+  probe.style.cssText = 'display:inline-block;width:0;height:0';
+  node.parentNode.insertBefore(probe, node);
+  const y = probe.getBoundingClientRect().bottom;
+  probe.remove();
+  return y;
+}
+
+// Stretch the parentheses of a group upwards so their top sits at the level of its tallest overline.
+const measureCtx = document.createElement('canvas').getContext('2d');
+function fixParens() {
+  for (const p of result.querySelectorAll('.par')) {
+    p.style.transform = '';
+    delete p.dataset.sy;
+    delete p.dataset.od;
+  }
+  for (const group of result.querySelectorAll('.pg')) {
+    const top = Math.min(...[...group.querySelectorAll('.ov')].map(o => o.getBoundingClientRect().top));
+    if (top === Infinity) continue;
+    for (const p of group.querySelectorAll(':scope > .par')) {
+      const cs = getComputedStyle(p);
+      measureCtx.font = `${cs.fontSize} ${cs.fontFamily}`;
+      const { actualBoundingBoxAscent: asc, actualBoundingBoxDescent: desc } = measureCtx.measureText(p.textContent);
+      if (!(asc + desc > 0)) continue;
+      const base = baselineY(p.firstChild);
+      const sy = (base + desc - top) / (asc + desc);
+      if (!(sy > 1.02)) continue;
+      p.style.transformOrigin = `0 ${(base + desc - p.getBoundingClientRect().top).toFixed(2)}px`;
+      p.style.transform = `scaleY(${sy.toFixed(4)})`;
+      p.dataset.sy = sy.toFixed(4);   // read back by buildSVG
+      p.dataset.od = desc.toFixed(2);
     }
-    var savedTheme = store.get(KEY_THEME);
-    if (savedTheme === 'dark' || savedTheme === 'light') { root.setAttribute('data-theme', savedTheme); }
-    document.getElementById('themeToggle').addEventListener('click', function () {
-      var next = effectiveTheme() === 'dark' ? 'light' : 'dark';
-      root.setAttribute('data-theme', next);
-      store.set(KEY_THEME, next);
-    });
+  }
+}
 
-    /* input */
-    window.addEventListener('resize', autosize);
-    input.addEventListener('input', function () {
-      store.set(KEY_INPUT, input.value);
-      render();
-    });
-    document.getElementById('clearBtn').addEventListener('click', function () {
-      input.value = '';
-      render();
-      store.remove(KEY_INPUT);
-      input.focus();
-    });
-    var saved = store.get(KEY_INPUT);
-    if (saved) { input.value = saved; }
-    applyLang();
-    render();
+function render() {
+  autosize();
+  const lines = input.value.split(/\r\n|\r|\n/);
+  const any = lines.some(l => l.trim());
+  lineCount = lines.length;
+  lastError = null;
 
+  if (any) {
+    const rows = lines.map((line, i) => {
+      if (!line.trim()) return '<div class="blank"></div>';
+      const { segs, errors } = buildSegs(line);
+      if (errors.length && !lastError) lastError = { ...errors[0], line: i + 1 };
+      return `<div>${segsToHTML(segs)}</div>`;
+    });
+    result.innerHTML = `<div class="rblock">${rows.join('')}</div>`;
+  } else {
+    // Empty input: show the placeholder example as a greyed, non-interactive preview.
+    result.innerHTML = `<div class="rblock demo"><div>${segsToHTML(buildSegs(input.placeholder).segs)}</div></div>`;
+    setMenu(false);
+  }
+  for (const id of ['svgBtn', 'fmtBtn', 'copyBtn']) $(id).disabled = !any;
+  showNote();
+  fixParens();
+}
+
+window.addEventListener('resize', () => { autosize(); fixParens(); });
+document.fonts.ready.then(fixParens);
+
+/* ---------------- Export ---------------- */
+// Builds the SVG from the laid-out result in the DOM, so it matches what is on screen.
+function buildSVG() {
+  const block = result.querySelector('.rblock');
+  if (!block || block.classList.contains('demo')) return null;
+
+  const pad = 10, lines = [], texts = [];
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const extend = r => {
+    minX = Math.min(minX, r.left); minY = Math.min(minY, r.top);
+    maxX = Math.max(maxX, r.right); maxY = Math.max(maxY, r.bottom);
+  };
+
+  for (const ov of block.querySelectorAll('.ov')) {
+    const r = ov.getBoundingClientRect();
+    const w = parseFloat(getComputedStyle(ov).borderTopWidth) || 1;
+    lines.push({ x1: r.left, x2: r.right, y: r.top + w / 2, w });
+    extend(r);
   }
 
-  if (typeof document !== 'undefined') { initDOM(); }
-  if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { buildSegs: buildSegs, segsToHTML: segsToHTML, tokenize: tokenize };
+  // Measure stretched parentheses untransformed; the stretch is re-applied as an SVG transform.
+  const pars = [...block.querySelectorAll('.par')];
+  const savedTransforms = pars.map(p => p.style.transform);
+  pars.forEach(p => { p.style.transform = 'none'; });
+
+  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+  const textNodes = [];
+  while (walker.nextNode()) textNodes.push(walker.currentNode);
+  for (const node of textNodes) {
+    const s = node.nodeValue;
+    if (!/\S/.test(s)) continue;
+    const a = s.search(/\S/), b = s.trimEnd().length;
+    const range = document.createRange();
+    range.setStart(node, a);
+    range.setEnd(node, b);
+    const r = range.getBoundingClientRect();
+    const parent = node.parentElement;
+    texts.push({
+      x: r.left, y: baselineY(node), w: r.width, s: s.slice(a, b),
+      size: parseFloat(getComputedStyle(parent).fontSize),
+      sy: parseFloat(parent.dataset.sy) || 1,
+      od: parseFloat(parent.dataset.od) || 0
+    });
+    extend(r);
   }
-}());
-//]]>
+  pars.forEach((p, i) => { p.style.transform = savedTransforms[i]; });
+  if (minX === Infinity) return null;
+
+  const f = v => Math.round(v * 100) / 100;
+  const W = maxX - minX + 2 * pad, H = maxY - minY + 2 * pad;
+  const ox = pad - minX, oy = pad - minY;
+
+  const textEls = texts.map(t => {
+    let tf = '';
+    if (t.sy !== 1) {
+      const y0 = t.y + oy + t.od;
+      tf = ` transform="translate(0 ${f(y0)}) scale(1 ${t.sy}) translate(0 ${f(-y0)})"`;
+    }
+    return `<text x="${f(t.x + ox)}" y="${f(t.y + oy)}" font-size="${t.size}" textLength="${f(t.w)}" lengthAdjust="spacing"${tf}>${esc(t.s)}</text>`;
+  });
+  const lineEls = lines.map(L =>
+    `<line x1="${f(L.x1 + ox)}" y1="${f(L.y + oy)}" x2="${f(L.x2 + ox)}" y2="${f(L.y + oy)}" stroke-width="${f(L.w)}"/>`);
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${f(W)}" height="${f(H)}" viewBox="0 0 ${f(W)} ${f(H)}">
+<g fill="#000" stroke="none" font-family="${esc(getComputedStyle(block).fontFamily)}">
+${textEls.join('\n')}
+</g>
+<g stroke="#000" fill="none">
+${lineEls.join('\n')}
+</g>
+</svg>
+`;
+}
+
+const svgBlob = svg => new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+
+const toPNG = () => new Promise((resolve, reject) => {
+  const svg = buildSVG();
+  if (!svg) return reject(new Error('empty'));
+  const url = URL.createObjectURL(svgBlob(svg));
+  const img = new Image();
+  img.onload = () => {
+    const scale = 3;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(img.width * scale);
+    canvas.height = Math.ceil(img.height * scale);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(url);
+    canvas.toBlob(blob => (blob ? resolve(blob) : reject(new Error('png'))), 'image/png');
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('img')); };
+  img.src = url;
+});
+
+function saveBlob(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+$('svgBtn').addEventListener('click', () => {
+  if (fmt === 'svg') {
+    const svg = buildSVG();
+    if (svg) saveBlob(svgBlob(svg), 'boolean-expression.svg');
+  } else {
+    toPNG().then(blob => saveBlob(blob, 'boolean-expression.png'), () => {});
+  }
+});
+
+/* download format dropdown (affects the download button only, not the clipboard copy) */
+function setMenu(open) {
+  fmtMenu.hidden = !open;
+  fmtBtn.setAttribute('aria-expanded', open);
+}
+function markFmt() {
+  for (const li of fmtMenu.querySelectorAll('li')) li.setAttribute('aria-selected', li.dataset.fmt === fmt);
+  updateDlTip();
+}
+fmtBtn.addEventListener('click', ev => {
+  ev.stopPropagation();
+  setMenu(fmtMenu.hidden);
+});
+fmtMenu.addEventListener('click', ev => {
+  const li = ev.target.closest('li');
+  if (!li) return;
+  fmt = li.dataset.fmt;
+  store.set(KEY_FMT, fmt);
+  markFmt();
+  setMenu(false);
+});
+document.addEventListener('click', () => setMenu(false));
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') setMenu(false); });
+
+/* clipboard (navigator.clipboard is missing in insecure contexts) */
+if (!navigator.clipboard?.write) copyBtn.style.display = 'none';
+copyBtn.addEventListener('click', () => {
+  // The promise is handed over right away so the copy keeps the user gesture (needed by Safari).
+  navigator.clipboard.write([new ClipboardItem({ 'image/png': toPNG() })]).then(() => {
+    copyBtn.classList.add('ok');
+    setTimeout(() => copyBtn.classList.remove('ok'), 1500);
+  }).catch(() => {});
+});
+
+/* input */
+input.addEventListener('input', () => {
+  store.set(KEY_INPUT, input.value);
+  render();
+});
+$('clearBtn').addEventListener('click', () => {
+  input.value = '';
+  render();
+  store.remove(KEY_INPUT);
+  input.focus();
+});
+
+input.value = store.get(KEY_INPUT) ?? '';
+markFmt();
+applyLang();
+render();
 </script>
 </body>
 </html>
