@@ -18,7 +18,6 @@
   --err: #c62828;
   --err-bg: rgba(198, 40, 40, 0.12);
 }
-/* The theme is always set on <html> by the script (saved choice, else OS preference). */
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #12151a;
@@ -147,6 +146,8 @@ button svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-lin
 .ov.ov2 { padding-top: round(0.2em, 1px); }
 .andgap { display: inline-block; width: 0.18em; }
 .par { display: inline-block; }
+.par.po { margin-right: 0.14em; }
+.par.pc { margin-left: 0.14em; }
 .op { font-size: 0.8em; }
 sub { font-size: 0.65em; line-height: 0; }
 .err { background: var(--err-bg); border-bottom: 1px dotted var(--err); border-radius: 2px; }
@@ -432,7 +433,7 @@ function renderNode(n) {
         // Parentheses around overlines are stretched later (fixParens) so their top reaches the bar.
         return [{ t: 'pgo' }, { t: 'par', s: '(' }, ...inner, close, { t: 'pgc' }];
       }
-      return [txt('('), ...inner, n.open ? close : txt(')')];
+      return [{ t: 'par', s: '(' }, ...inner, close];
     }
     case 'and':
       return n.items.flatMap((item, i) => {
@@ -481,7 +482,7 @@ function segsToHTML(segs) {
       case 'gap': return '<span class="andgap"></span>';
       case 'pgo': return '<span class="pg">';
       case 'pgc': return '</span>';
-      case 'par': return `<span class="par">${esc(g.s)}</span>`;
+      case 'par': return `<span class="par ${g.s === '(' ? 'po' : 'pc'}">${g.s}</span>`;
       case 'op': return ` <span class="op">${esc(g.s.trim())}</span> `;
       case 'err': return `<span class="err${g.ghost ? ' ghost' : ''}">${esc(g.s)}</span>`;
       case 'bar': return overline(segHeight(g), segsToHTML(g.kids));
