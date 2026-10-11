@@ -157,6 +157,8 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .theme-toggle { top: 10px; right: 10px; }
   .lang-toggle { right: 56px; }
 }
+.ovgap { display: inline-block; width: 0.14em; }
+.op { font-size: 0.8em; }
 .ov > .ov:first-child { margin-left: 0; }
 .ov > .ov:last-child { margin-right: 0; }
 .err {
@@ -207,18 +209,6 @@ sub { font-size: 0.65em; line-height: 0; }
   'use strict';
 
   var FONT = "'Cambria Math','STIX Two Math','Latin Modern Math','STIXGeneral','Cambria','Times New Roman',serif";
-  var XOR_SYM = '\u2295';
-  var AND_SYM = '\u00B7';
-
-  var SUBMAP = {
-    '0': '\u2080', '1': '\u2081', '2': '\u2082', '3': '\u2083', '4': '\u2084',
-    '5': '\u2085', '6': '\u2086', '7': '\u2087', '8': '\u2088', '9': '\u2089',
-    'a': '\u2090', 'e': '\u2091', 'o': '\u2092', 'x': '\u2093', 'h': '\u2095',
-    'k': '\u2096', 'l': '\u2097', 'm': '\u2098', 'n': '\u2099', 'p': '\u209A',
-    's': '\u209B', 't': '\u209C', 'i': '\u1D62', 'j': '\u2C7C', 'r': '\u1D63',
-    'u': '\u1D64', 'v': '\u1D65'
-  };
-
   var I18N = {
     en: {
       pageTitle: 'Easy Boolean Writer',
@@ -227,7 +217,7 @@ sub { font-size: 0.65em; line-height: 0; }
       placeholder: 'S = (/(/AB) + C0 ^ D_ef).F',
       themeTip: 'Toggle light / dark theme',
       lineWord: 'Line',
-      langTip: 'Passer en fran\u00E7ais',
+      langTip: 'Passer en français',
       err: {
         missing: function () { return 'Missing operand'; },
         open: function () { return 'Unbalanced parenthesis: missing )'; },
@@ -236,18 +226,18 @@ sub { font-size: 0.65em; line-height: 0; }
       }
     },
     fr: {
-      pageTitle: '\u00C9criture Bool\u00E9enne Facile',
+      pageTitle: 'Écriture Booléenne Facile',
       label: 'Expression',
       clear: 'Effacer',
       placeholder: 'S = (/(/AB) + C0 ^ D_ef).F',
-      themeTip: 'Basculer entre th\u00E8me clair et sombre',
+      themeTip: 'Basculer entre thème clair et sombre',
       lineWord: 'Ligne',
       langTip: 'Switch to English',
       err: {
-        missing: function () { return 'Op\u00E9rande manquant'; },
-        open: function () { return 'Parenth\u00E8se non ferm\u00E9e\u00A0: \u00AB\u00A0)\u00A0\u00BB manquante'; },
-        close: function () { return 'Parenth\u00E8se fermante \u00AB\u00A0)\u00A0\u00BB inattendue'; },
-        unknown: function (c) { return 'Caract\u00E8re inconnu\u00A0: ' + c; }
+        missing: function () { return 'Opérande manquant'; },
+        open: function () { return 'Parenthèse non fermée : ) manquante'; },
+        close: function () { return 'Parenthèe fermante : ) inattendue'; },
+        unknown: function (c) { return 'Caractère inconnu : ' + c; }
       }
     }
   };
@@ -306,7 +296,7 @@ sub { font-size: 0.65em; line-height: 0; }
     }
     function placeholder(msg) {
       addError(msg);
-      return { type: 'err', text: '\u25A1', ghost: true };
+      return { type: 'err', text: '□', ghost: true };
     }
     function startsUnary(t) {
       return !!t && (t.type === 'var' || t.type === 'const' || t.type === 'not' || t.type === '(' || t.type === 'bad');
@@ -373,15 +363,6 @@ sub { font-size: 0.65em; line-height: 0; }
   }
 
   /* ---------------- Rendering to segments ---------------- */
-  function subUTF(sub) {
-    var out = '', i, m;
-    for (i = 0; i < sub.length; i++) {
-      m = SUBMAP[sub.charAt(i)];
-      if (!m) { return null; }
-      out += m;
-    }
-    return out;
-  }
   function isAtom(n) { return n.type === 'var' || n.type === 'const'; }
   function txt(s) { return { t: 'text', s: s }; }
 
@@ -406,14 +387,14 @@ sub { font-size: 0.65em; line-height: 0; }
           if (i > 0) {
             var a = n.items[i - 1], b = n.items[i];
             if (n.seps[i - 1] || (a.type === 'const' && b.type === 'const')) {
-              out.push(txt(' ' + AND_SYM + ' '));
+              out.push({ t: 'op', s: ' · ' });
             }
           }
           out = out.concat(renderNode(n.items[i]));
         }
         return out;
       case 'xor':
-        return joinItems(n.items, ' ' + XOR_SYM + ' ');
+        return joinItems(n.items, ' ⊕ ');
       case 'or':
         return joinItems(n.items, ' + ');
       case 'eq':
@@ -424,7 +405,7 @@ sub { font-size: 0.65em; line-height: 0; }
   function joinItems(items, op) {
     var out = [], i;
     for (i = 0; i < items.length; i++) {
-      if (i > 0) { out.push(txt(op)); }
+      if (i > 0) { out.push(op === ' = ' ? txt(op) : { t: 'op', s: op }); }
       out = out.concat(renderNode(items[i]));
     }
     return out;
@@ -461,21 +442,26 @@ sub { font-size: 0.65em; line-height: 0; }
 
   /* ---------------- Segments to HTML ---------------- */
   function segsToHTML(segs) {
-    var out = '', i, g, u;
+    var out = '', i, g, u, prevOv = false, isOv;
     for (i = 0; i < segs.length; i++) {
       g = segs[i];
+      isOv = (g.t === 'var' && g.n > 0) || g.t === 'bar';
+      /* Two overlines touching each other get a fixed extra gap so the bars never merge visually. */
+      if (isOv && prevOv) { out += '<span class="ovgap"></span>'; }
+      prevOv = isOv;
       if (g.t === 'text') {
         out += esc(g.s);
+      } else if (g.t === 'op') {
+        out += ' <span class="op">' + esc(g.s.replace(/^\s+|\s+$/g, '')) + '</span> ';
       } else if (g.t === 'err') {
         out += '<span class="err' + (g.ghost ? ' ghost' : '') + '">' + esc(g.s) + '</span>';
       } else if (g.t === 'var') {
         var vh = esc(g.base), lv;
+        if (g.sub) {
+          vh += '<sub>' + esc(g.sub) + '</sub>';
+        }
         for (lv = 1; lv <= g.n; lv++) { vh = ovOpen(lv) + vh + '</span>'; }
         out += vh;
-        if (g.sub) {
-          u = subUTF(g.sub);
-          out += (u !== null) ? esc(u) : '<sub>' + esc(g.sub) + '</sub>';
-        }
       } else if (g.t === 'bar') {
         out += ovOpen(segHeight(g)) + segsToHTML(g.kids) + '</span>';
       }
@@ -525,8 +511,8 @@ sub { font-size: 0.65em; line-height: 0; }
     function showNote() {
       if (!lastErrors.length) { note.textContent = ''; return; }
       var e = lastErrors[0];
-      var pre = lineCount > 1 ? I18N[lang].lineWord + ' ' + e.line + (lang === 'fr' ? '\u00A0: ' : ': ') : '';
-      note.textContent = '\u26A0 ' + pre + I18N[lang].err[e.key](e.c);
+      var pre = lineCount > 1 ? I18N[lang].lineWord + ' ' + e.line + (lang === 'fr' ? ' : ' : ': ') : '';
+      note.textContent = '⚠ ' + pre + I18N[lang].err[e.key](e.c);
     }
     function applyLang() {
       var d = I18N[lang];
