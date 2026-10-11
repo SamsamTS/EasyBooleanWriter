@@ -159,6 +159,13 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 .ovgap { display: inline-block; width: 0.14em; }
 .op { font-size: 0.8em; }
+.dl-btn { position: absolute; top: 8px; right: 8px; }
+.dl-btn:disabled { opacity: 0.4; cursor: default; }
+.dl-btn:disabled:hover { background: var(--btn); }
+.copy-btn { right: 52px; }
+.copy-btn .i-ok { display: none; }
+.copy-btn.ok .i-ok { display: block; }
+.copy-btn.ok .i-copy { display: none; }
 .ov > .ov:first-child { margin-left: 0; }
 .ov > .ov:last-child { margin-right: 0; }
 .err {
@@ -200,6 +207,13 @@ sub { font-size: 0.65em; line-height: 0; }
   </div>
   <div id="outputPanel" class="panel">
     <div id="result" aria-live="polite"></div>
+    <button id="svgBtn" class="icon-btn dl-btn" type="button" title="Download as PNG" aria-label="Download as PNG" disabled>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"></path><path d="M7 11l5 5 5-5"></path><path d="M5 20h14"></path></svg>
+    </button>
+    <button id="copyBtn" class="icon-btn dl-btn copy-btn" type="button" title="Copy to clipboard" aria-label="Copy to clipboard" disabled>
+      <svg class="i-copy" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg>
+      <svg class="i-ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+    </button>
     <div id="note"></div>
   </div>
 </main>
@@ -217,6 +231,8 @@ sub { font-size: 0.65em; line-height: 0; }
       placeholder: 'S = (/(/AB) + C0 ^ D_ef).F',
       themeTip: 'Toggle light / dark theme',
       lineWord: 'Line',
+      svg: 'Download as PNG',
+      copy: 'Copy to clipboard',
       langTip: 'Passer en français',
       err: {
         missing: function () { return 'Missing operand'; },
@@ -232,6 +248,8 @@ sub { font-size: 0.65em; line-height: 0; }
       placeholder: 'S = (/(/AB) + C0 ^ D_ef).F',
       themeTip: 'Basculer entre thème clair et sombre',
       lineWord: 'Ligne',
+      svg: 'Télécharger en PNG',
+      copy: 'Copier dans le presse-papiers',
       langTip: 'Switch to English',
       err: {
         missing: function () { return 'Opérande manquant'; },
@@ -521,6 +539,12 @@ sub { font-size: 0.65em; line-height: 0; }
       document.getElementById('title').textContent = d.pageTitle;
       document.querySelector('label[for="expr"]').textContent = d.label;
       document.getElementById('clearBtn').textContent = d.clear;
+      var sb = document.getElementById('svgBtn');
+      sb.setAttribute('title', d.svg);
+      sb.setAttribute('aria-label', d.svg);
+      var cb = document.getElementById('copyBtn');
+      cb.setAttribute('title', d.copy);
+      cb.setAttribute('aria-label', d.copy);
       input.setAttribute('placeholder', d.placeholder);
       var tt = document.getElementById('themeToggle');
       tt.setAttribute('title', d.themeTip);
@@ -567,9 +591,122 @@ sub { font-size: 0.65em; line-height: 0; }
         }
       }
       result.innerHTML = any ? '<div class="rblock">' + html + '</div>' : '';
+      document.getElementById('svgBtn').disabled = !any;
+      document.getElementById('copyBtn').disabled = !any;
       lastErrors = errs;
       showNote();
     }
+
+    /* SVG export: reads the laid-out result from the DOM so the SVG matches what is on screen */
+    function buildSVG() {
+      var block = result.querySelector('.rblock');
+      if (!block) { return null; }
+      var lines = [], texts = [], nodes = [], i, r, cs, w, n;
+      var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, pad = 10;
+      function ext(l, t, rr, b) {
+        if (l < minX) { minX = l; } if (t < minY) { minY = t; }
+        if (rr > maxX) { maxX = rr; } if (b > maxY) { maxY = b; }
+      }
+      var ovs = block.querySelectorAll('.ov');
+      for (i = 0; i < ovs.length; i++) {
+        r = ovs[i].getBoundingClientRect();
+        cs = window.getComputedStyle(ovs[i]);
+        w = parseFloat(cs.borderTopWidth) || 1;
+        lines.push({ x1: r.left, x2: r.right, y: r.top + w / 2, w: w });
+        ext(r.left, r.top, r.right, r.bottom);
+      }
+      var walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, null, false);
+      while ((n = walker.nextNode())) { nodes.push(n); }
+      for (i = 0; i < nodes.length; i++) {
+        n = nodes[i];
+        var s = n.nodeValue;
+        if (!/\S/.test(s)) { continue; }
+        var a = s.search(/\S/), b = s.replace(/\s+$/, '').length;
+        var range = document.createRange();
+        range.setStart(n, a);
+        range.setEnd(n, b);
+        r = range.getBoundingClientRect();
+        var parent = n.parentNode;
+        var probe = document.createElement('span');
+        probe.style.cssText = 'display:inline-block;width:0;height:0';
+        parent.insertBefore(probe, n);
+        var base = probe.getBoundingClientRect().bottom;
+        parent.removeChild(probe);
+        cs = window.getComputedStyle(parent);
+        texts.push({ x: r.left, y: base, w: r.width, size: cs.fontSize, s: s.slice(a, b) });
+        ext(r.left, r.top, r.right, r.bottom);
+      }
+      if (minX === Infinity) { return null; }
+      var W = maxX - minX + 2 * pad, H = maxY - minY + 2 * pad;
+      var ox = pad - minX, oy = pad - minY;
+      function f(v) { return (Math.round(v * 100) / 100).toString(); }
+      var svg = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+        '<svg xmlns="http://www.w3.org/2000/svg" width="' + f(W) + '" height="' + f(H) +
+        '" viewBox="0 0 ' + f(W) + ' ' + f(H) + '">\n' +
+        '<g fill="#000" stroke="none" font-family="' + esc(FONT) + '">\n';
+      for (i = 0; i < texts.length; i++) {
+        var t = texts[i];
+        svg += '<text x="' + f(t.x + ox) + '" y="' + f(t.y + oy) + '" font-size="' + parseFloat(t.size) +
+          '" textLength="' + f(t.w) + '" lengthAdjust="spacing">' + esc(t.s) + '</text>\n';
+      }
+      svg += '</g>\n<g stroke="#000" fill="none">\n';
+      for (i = 0; i < lines.length; i++) {
+        var L = lines[i];
+        svg += '<line x1="' + f(L.x1 + ox) + '" y1="' + f(L.y + oy) + '" x2="' + f(L.x2 + ox) +
+          '" y2="' + f(L.y + oy) + '" stroke-width="' + f(L.w) + '"/>\n';
+      }
+      svg += '</g>\n</svg>\n';
+      return svg;
+    }
+    function toPNG() {
+      return new Promise(function (resolve, reject) {
+        var svg = buildSVG();
+        if (!svg) { reject(new Error('empty')); return; }
+        var svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+        var img = new Image();
+        img.onload = function () {
+          var scale = 3;
+          var canvas = document.createElement('canvas');
+          canvas.width = Math.ceil(img.width * scale);
+          canvas.height = Math.ceil(img.height * scale);
+          var ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(svgUrl);
+          canvas.toBlob(function (blob) {
+            if (blob) { resolve(blob); } else { reject(new Error('png')); }
+          }, 'image/png');
+        };
+        img.onerror = function () { URL.revokeObjectURL(svgUrl); reject(new Error('img')); };
+        img.src = svgUrl;
+      });
+    }
+    document.getElementById('svgBtn').addEventListener('click', function () {
+      toPNG().then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement('a');
+        link.href = url;
+        link.download = 'boolean-expression.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      }, function () { /* ignore */ });
+    });
+    var copyBtn = document.getElementById('copyBtn');
+    if (!(navigator.clipboard && window.ClipboardItem)) {
+      copyBtn.style.display = 'none';
+    }
+    copyBtn.addEventListener('click', function () {
+      try {
+        /* The promise is handed over right away so the copy keeps the user gesture (needed by Safari). */
+        navigator.clipboard.write([new window.ClipboardItem({ 'image/png': toPNG() })]).then(function () {
+          copyBtn.classList.add('ok');
+          setTimeout(function () { copyBtn.classList.remove('ok'); }, 1500);
+        }, function () { /* ignore */ });
+      } catch (e) { /* ignore */ }
+    });
 
     /* theme */
     function effectiveTheme() {
