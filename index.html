@@ -162,8 +162,41 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .dl-btn { position: absolute; top: 8px; right: 8px; }
 .dl-btn:disabled { opacity: 0.4; cursor: default; }
 .dl-btn:disabled:hover { background: var(--btn); }
+.seg:disabled { opacity: 0.4; cursor: default; }
+.seg:disabled:hover { background: var(--btn); }
+.dl-group { display: flex; align-items: stretch; }
+.seg-main { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.seg-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  padding: 0;
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+}
+.seg-arrow svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fmt-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin: 4px 0 0 0;
+  padding: 4px;
+  list-style: none;
+  min-width: 84px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 20;
+}
+.fmt-menu[hidden] { display: none; }
+.fmt-menu li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+.fmt-menu li:hover { background: var(--btn-hover); }
+.fmt-menu li[aria-selected="true"]::after { content: "\2713"; color: var(--accent); }
 #result .demo { opacity: 0.3; user-select: none; -webkit-user-select: none; pointer-events: none; }
-.copy-btn { right: 52px; }
+.copy-btn { right: 72px; }
+@media (max-width: 520px) { .copy-btn { right: 76px; } }
 .copy-btn .i-ok { display: none; }
 .copy-btn.ok .i-ok { display: block; }
 .copy-btn.ok .i-copy { display: none; }
@@ -208,9 +241,18 @@ sub { font-size: 0.65em; line-height: 0; }
   </div>
   <div id="outputPanel" class="panel">
     <div id="result" aria-live="polite"></div>
-    <button id="svgBtn" class="icon-btn dl-btn" type="button" title="Download as PNG" aria-label="Download as PNG" disabled>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"></path><path d="M7 11l5 5 5-5"></path><path d="M5 20h14"></path></svg>
-    </button>
+    <div id="dlGroup" class="dl-btn dl-group">
+      <button id="svgBtn" class="icon-btn seg seg-main" type="button" title="Download as PNG" aria-label="Download as PNG" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"></path><path d="M7 11l5 5 5-5"></path><path d="M5 20h14"></path></svg>
+      </button>
+      <button id="fmtBtn" class="seg seg-arrow" type="button" title="Download format" aria-label="Download format" aria-haspopup="listbox" aria-expanded="false" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+      </button>
+      <ul id="fmtMenu" class="fmt-menu" role="listbox" hidden>
+        <li role="option" data-fmt="png" aria-selected="true">PNG</li>
+        <li role="option" data-fmt="svg" aria-selected="false">SVG</li>
+      </ul>
+    </div>
     <button id="copyBtn" class="icon-btn dl-btn copy-btn" type="button" title="Copy to clipboard" aria-label="Copy to clipboard" disabled>
       <svg class="i-copy" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg>
       <svg class="i-ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
@@ -233,6 +275,9 @@ sub { font-size: 0.65em; line-height: 0; }
       themeTip: 'Toggle light / dark theme',
       lineWord: 'Line',
       svg: 'Download as PNG',
+      dlPng: 'Download as PNG',
+      dlSvg: 'Download as SVG',
+      fmtTip: 'Download format',
       copy: 'Copy to clipboard',
       langTip: 'Passer en français',
       err: {
@@ -250,6 +295,9 @@ sub { font-size: 0.65em; line-height: 0; }
       themeTip: 'Basculer entre thème clair et sombre',
       lineWord: 'Ligne',
       svg: 'Télécharger en PNG',
+      dlPng: 'Télécharger en PNG',
+      dlSvg: 'Télécharger en SVG',
+      fmtTip: 'Format de téléchargement',
       copy: 'Copier dans le presse-papiers',
       langTip: 'Switch to English',
       err: {
@@ -525,7 +573,15 @@ sub { font-size: 0.65em; line-height: 0; }
     var lang = 'en';
     var lastErrors = [];
     var lineCount = 1;
-    var KEY_LANG = 'boolnotation.lang';
+    var KEY_LANG = 'boolnotation.lang', KEY_FMT = 'boolnotation.fmt';
+    var fmt = store.get(KEY_FMT) === 'svg' ? 'svg' : 'png';
+
+    function updateDlTip() {
+      var tip = I18N[lang][fmt === 'svg' ? 'dlSvg' : 'dlPng'];
+      var sb = document.getElementById('svgBtn');
+      sb.setAttribute('title', tip);
+      sb.setAttribute('aria-label', tip);
+    }
 
     function showNote() {
       if (!lastErrors.length) { note.textContent = ''; return; }
@@ -540,9 +596,10 @@ sub { font-size: 0.65em; line-height: 0; }
       document.getElementById('title').textContent = d.pageTitle;
       document.querySelector('label[for="expr"]').textContent = d.label;
       document.getElementById('clearBtn').textContent = d.clear;
-      var sb = document.getElementById('svgBtn');
-      sb.setAttribute('title', d.svg);
-      sb.setAttribute('aria-label', d.svg);
+      updateDlTip();
+      var fb = document.getElementById('fmtBtn');
+      fb.setAttribute('title', d.fmtTip);
+      fb.setAttribute('aria-label', d.fmtTip);
       var cb = document.getElementById('copyBtn');
       cb.setAttribute('title', d.copy);
       cb.setAttribute('aria-label', d.copy);
@@ -598,6 +655,11 @@ sub { font-size: 0.65em; line-height: 0; }
         result.innerHTML = '<div class="rblock demo"><div>' + segsToHTML(buildSegs(I18N[lang].placeholder).segs) + '</div></div>';
       }
       document.getElementById('svgBtn').disabled = !any;
+      document.getElementById('fmtBtn').disabled = !any;
+      if (!any) {
+        document.getElementById('fmtMenu').setAttribute('hidden', '');
+        document.getElementById('fmtBtn').setAttribute('aria-expanded', 'false');
+      }
       document.getElementById('copyBtn').disabled = !any;
       lastErrors = errs;
       showNote();
@@ -688,18 +750,59 @@ sub { font-size: 0.65em; line-height: 0; }
         img.src = svgUrl;
       });
     }
+    function saveBlob(blob, name) {
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement('a');
+      link.href = url;
+      link.download = name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }
     document.getElementById('svgBtn').addEventListener('click', function () {
+      if (fmt === 'svg') {
+        var svg = buildSVG();
+        if (svg) { saveBlob(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }), 'boolean-expression.svg'); }
+        return;
+      }
       toPNG().then(function (blob) {
-        var url = URL.createObjectURL(blob);
-        var link = document.createElement('a');
-        link.href = url;
-        link.download = 'boolean-expression.png';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        saveBlob(blob, 'boolean-expression.png');
       }, function () { /* ignore */ });
     });
+
+    /* download format dropdown (affects the download button only, not the clipboard copy) */
+    var fmtBtn = document.getElementById('fmtBtn');
+    var fmtMenu = document.getElementById('fmtMenu');
+    function setMenu(open) {
+      if (open) { fmtMenu.removeAttribute('hidden'); } else { fmtMenu.setAttribute('hidden', ''); }
+      fmtBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    function markFmt() {
+      var items = fmtMenu.querySelectorAll('li'), k;
+      for (k = 0; k < items.length; k++) {
+        items[k].setAttribute('aria-selected', items[k].getAttribute('data-fmt') === fmt ? 'true' : 'false');
+      }
+      updateDlTip();
+    }
+    fmtBtn.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      setMenu(fmtMenu.hasAttribute('hidden'));
+    });
+    fmtMenu.addEventListener('click', function (ev) {
+      var li = ev.target;
+      while (li && li !== fmtMenu && li.nodeName !== 'LI') { li = li.parentNode; }
+      if (!li || li === fmtMenu) { return; }
+      fmt = li.getAttribute('data-fmt') === 'svg' ? 'svg' : 'png';
+      store.set(KEY_FMT, fmt);
+      markFmt();
+      setMenu(false);
+    });
+    document.addEventListener('click', function () { setMenu(false); });
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape') { setMenu(false); }
+    });
+    markFmt();
     var copyBtn = document.getElementById('copyBtn');
     if (!(navigator.clipboard && window.ClipboardItem)) {
       copyBtn.style.display = 'none';
