@@ -117,7 +117,17 @@ button svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-lin
 .lang-toggle { right: 56px; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em; }
 
 /* Output panel */
-#outputPanel { min-height: 120px; padding: 24px 16px; display: flex; flex-direction: column; }
+#outputPanel { display: flex; align-items: stretch; min-height: 120px; padding: 0; }
+.out-main { position: relative; flex: 1 1 auto; min-width: 0; padding: 24px 16px; display: flex; flex-direction: column; }
+.out-side {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 16px 12px;
+  border-left: 1px solid var(--border);
+}
 #result {
   font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", "STIXGeneral", Cambria, "Times New Roman", serif;
   font-size: 2rem;
@@ -167,11 +177,9 @@ sub { font-size: 0.65em; line-height: 0; }
 }
 
 /* Download / copy controls */
-.dl-btn { position: absolute; top: 8px; right: 8px; }
-.copy-group { right: 72px; }
 .copy-btn .i-ok, .copy-btn.ok .i-copy { display: none; }
 .copy-btn.ok .i-ok { display: block; }
-.dl-group { display: flex; align-items: stretch; }
+.dl-group { position: relative; display: flex; align-items: stretch; }
 .seg-main { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .seg-arrow {
   display: inline-flex;
@@ -204,14 +212,14 @@ sub { font-size: 0.65em; line-height: 0; }
 @media (max-width: 520px) {
   main { padding: 60px 12px 24px 12px; }
   .panel { padding: 12px; }
-  #outputPanel { padding: 24px 12px; }
+  .out-main { padding: 24px 12px; }
+  .out-side { padding: 12px 8px; }
   #expr { font-size: 16px; padding: 10px 44px 10px 10px; }
   #expr::placeholder { font-size: 0.85em; }
   #result { font-size: 1.5rem; }
   .icon-btn { width: 40px; height: 40px; }
   .theme-toggle { top: 10px; right: 10px; }
   .lang-toggle { right: 56px; }
-  .copy-group { right: 76px; }
 }
 </style>
 </head>
@@ -232,20 +240,12 @@ sub { font-size: 0.65em; line-height: 0; }
     </div>
   </div>
   <div id="outputPanel" class="panel">
-    <div id="result" aria-live="polite"></div>
-    <div class="dl-btn dl-group">
-      <button id="svgBtn" class="icon-btn seg-main" type="button" disabled>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"></path><path d="M7 11l5 5 5-5"></path><path d="M5 20h14"></path></svg>
-      </button>
-      <button id="fmtBtn" class="seg-arrow" type="button" aria-haspopup="listbox" aria-expanded="false" disabled>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
-      </button>
-      <ul id="fmtMenu" class="fmt-menu" role="listbox" hidden>
-        <li role="option" data-fmt="png" aria-selected="true">PNG</li>
-        <li role="option" data-fmt="svg" aria-selected="false">SVG</li>
-      </ul>
+    <div class="out-main">
+      <div id="result" aria-live="polite"></div>
+      <div id="note"></div>
     </div>
-    <div id="copyGroup" class="dl-btn dl-group copy-group">
+    <div class="out-side">
+    <div id="copyGroup" class="dl-group">
       <button id="copyBtn" class="icon-btn seg-main copy-btn" type="button" disabled>
         <svg class="i-copy" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg>
         <svg class="i-ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
@@ -261,7 +261,19 @@ sub { font-size: 0.65em; line-height: 0; }
         <li role="option" data-fmt="asciimath" aria-selected="false">AsciiMath</li>
       </ul>
     </div>
-    <div id="note"></div>
+    <div class="dl-group">
+      <button id="svgBtn" class="icon-btn seg-main" type="button" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"></path><path d="M7 11l5 5 5-5"></path><path d="M5 20h14"></path></svg>
+      </button>
+      <button id="fmtBtn" class="seg-arrow" type="button" aria-haspopup="listbox" aria-expanded="false" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+      </button>
+      <ul id="fmtMenu" class="fmt-menu" role="listbox" hidden>
+        <li role="option" data-fmt="png" aria-selected="true">PNG</li>
+        <li role="option" data-fmt="svg" aria-selected="false">SVG</li>
+      </ul>
+    </div>
+    </div>
   </div>
 </main>
 <script>
